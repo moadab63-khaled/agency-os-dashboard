@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS — Live Command Center</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=Tajawal:wght@400;500;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0F1729; font-family: 'Tajawal', sans-serif; color: #E8ECF4; padding: 24px 18px 60px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+  .header h1 { font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 24px; color: #F4E4B8; }
+  .badge { background: rgba(74,222,128,0.14); border: 1px solid #4ADE80; color: #4ADE80; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; }
+  .badge.off { background: rgba(201,162,39,0.14); border-color: #C9A227; color: #E8C25C; }
+  .gear { background: #161F38; border: 1px solid #23304F; color: #C7CEDE; border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+
+  .note { font-size: 12px; color: #8A93AC; margin-bottom: 18px; line-height: 1.5; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .card { background: #161F38; border: 1px solid #23304F; border-radius: 14px; padding: 18px; }
+  .card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8A93AC; margin-bottom: 6px; font-weight: 700; }
+  .card .value { font-family: 'Cairo', sans-serif; font-size: 26px; font-weight: 800; }
+  .green { color: #4ADE80; } .red { color: #F87171; } .gold { color: #E8C25C; }
+
+  .row { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 760px) { .row { grid-template-columns: 1fr; } }
+  .panel { background: #161F38; border: 1px solid #23304F; border-radius: 14px; padding: 18px; }
+  .panel h2 { font-family: 'Cairo', sans-serif; font-size: 14px; color: #F4E4B8; margin-bottom: 12px; }
+  .line { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1E2942; font-size: 13px; }
+  .line:last-child { border-bottom: none; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+  .dot.green { background: #4ADE80; } .dot.yellow { background: #F5C044; } .dot.red { background: #F87171; }
+  .bar-track { width: 80px; height: 6px; background: #1E2942; border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; background: #E8C25C; }
+  .empty { color: #5C647C; font-size: 12px; padding: 6px 0; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(4,7,16,0.75); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; }
+  .overlay.hidden { display: none; }
+  .modal { background: #161F38; border: 1px solid #23304F; border-radius: 16px; padding: 24px; max-width: 440px; width: 100%; }
+  .modal h3 { font-family: 'Cairo', sans-serif; color: #F4E4B8; margin-bottom: 6px; font-size: 17px; }
+  .modal p { font-size: 12px; color: #8A93AC; margin-bottom: 16px; line-height: 1.5; }
+  .modal label { display: block; font-size: 12px; color: #C7CEDE; margin: 10px 0 4px; }
+  .modal input { width: 100%; background: #0F1729; border: 1px solid #23304F; border-radius: 8px; padding: 9px 10px; color: #E8ECF4; font-size: 13px; }
+  .modal .actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal button { flex: 1; border: none; border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .btn-save { background: #E8C25C; color: #0F1729; }
+  .btn-cancel { background: #23304F; color: #E8ECF4; }
+  .modal .helplink { font-size: 11px; color: #8A93AC; margin-top: 12px; display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>Agency OS — Live Command Center</h1>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <span id="statusBadge" class="badge off">Not connected</span>
+      <button class="gear" onclick="openModal()">⚙ Settings</button>
+    </div>
+  </div>
+  <div class="note" id="noteText">
+    Connect your own Notion databases below to see your real numbers here. Until then, this shows nothing —
+    it never displays anyone else's data.
+  </div>
+
+  <div id="dashboardArea"></div>
+</div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="modal">
+    <h3>Connect your Notion data</h3>
+    <p>Paste your own Notion integration token and database IDs. These are stored only in your browser — never sent anywhere except directly to Notion's API through this page.</p>
+
+    <label>Notion integration token</label>
+    <input id="inToken" type="password" placeholder="secret_...">
+
+    <label>Clients database ID</label>
+    <input id="inClients" type="text" placeholder="e.g. aed11247939c...">
+
+    <label>Finance database ID</label>
+    <input id="inFinance" type="text" placeholder="e.g. 0fa11247939c...">
+
+    <label>Team database ID (Agency Edition only)</label>
+    <input id="inTeam" type="text" placeholder="optional">
+
+    <div class="actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveAndLoad()">Save & Connect</button>
+    </div>
+    <span class="helplink">Where to find these: see the "Connect Your Live Dashboard" guide included with your purchase.</span>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'agencyOsDashboardConfig';
+
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }
+  catch (e) { return null; }
+}
+
+function openModal() {
+  const cfg = loadConfig();
+  if (cfg) {
+    document.getElementById('inToken').value = cfg.token || '';
+    document.getElementById('inClients').value = (cfg.databases && cfg.databases.clients) || '';
+    document.getElementById('inFinance').value = (cfg.databases && cfg.databases.finance) || '';
+    document.getElementById('inTeam').value = (cfg.databases && cfg.databases.team) || '';
+  }
+  document.getElementById('overlay').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('overlay').classList.add('hidden'); }
+
+function saveAndLoad() {
+  const cfg = {
+    token: document.getElementById('inToken').value.trim(),
+    databases: {
+      clients: document.getElementById('inClients').value.trim(),
+      finance: document.getElementById('inFinance').value.trim(),
+      team: document.getElementById('inTeam').value.trim(),
+    }
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  closeModal();
+  fetchAndRender();
+}
+
+function esc(s) { return (s || '').toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function healthDot(status) {
+  if (status === 'Healthy') return 'green';
+  if (status === 'Watch') return 'yellow';
+  if (status === 'At Risk') return 'red';
+  return 'yellow';
+}
+
+function renderDashboard(data) {
+  const clients = (data.clients && data.clients.results) || [];
+  const finance = (data.finance && data.finance.results) || [];
+  const team = (data.team && data.team.results) || [];
+
+  const getProp = (page, name) => (page.properties || {})[name];
+  const titleText = (p) => p && p.title && p.title[0] ? p.title[0].plain_text : '';
+  const selectName = (p) => p && p.select ? p.select.name : null;
+  const numberVal = (p) => p && typeof p.number === 'number' ? p.number : 0;
+
+  let revenue = 0, overdue = 0;
+  finance.forEach(f => {
+    const type = selectName(getProp(f, 'Type'));
+    const status = selectName(getProp(f, 'Invoice Status'));
+    const amt = numberVal(getProp(f, 'Amount'));
+    if (type === 'Income' && status === 'Paid') revenue += amt;
+    if (status === 'Overdue') overdue += amt;
+  });
+
+  const activeClients = clients.filter(c => selectName(getProp(c, 'Status')) === 'Active');
+  const needsAttention = clients.filter(c => {
+    const h = selectName(getProp(c, 'Health Status'));
+    return h === 'At Risk' || h === 'Watch';
+  });
+
+  const healthRows = clients.slice(0, 6).map(c => {
+    const name = titleText(getProp(c, 'Name')) || 'Unnamed client';
+    const status = selectName(getProp(c, 'Health Status')) || '—';
+    return `<div class="line"><span><span class="dot ${healthDot(status)}"></span>${esc(name)}</span><span style="color:#8A93AC;font-size:12px;">${esc(status)}</span></div>`;
+  }).join('') || '<div class="empty">No clients found in this database yet.</div>';
+
+  const maxWorkload = Math.max(1, ...team.map(t => numberVal(getProp(t, 'Current Workload'))));
+  const teamRows = team.slice(0, 6).map(t => {
+    const name = titleText(getProp(t, 'Name')) || 'Unnamed';
+    const role = selectName(getProp(t, 'Role')) || '';
+    const wl = numberVal(getProp(t, 'Current Workload'));
+    const pct = Math.round((wl / maxWorkload) * 100);
+    return `<div class="line"><span>${esc(name)}${role ? ' — ' + esc(role) : ''}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div></div>`;
+  }).join('') || '<div class="empty">No team members found (Freelancer Edition has no Team database).</div>';
+
+  const html = `
+    <div class="grid">
+      <div class="card"><div class="label">Revenue (Paid)</div><div class="value green">$${revenue.toLocaleString()}</div></div>
+      <div class="card"><div class="label">Overdue Invoices</div><div class="value red">$${overdue.toLocaleString()}</div></div>
+      <div class="card"><div class="label">Active Clients</div><div class="value">${activeClients.length}</div></div>
+      <div class="card"><div class="label">Needs Attention</div><div class="value gold">${needsAttention.length}</div></div>
+    </div>
+    <div class="row">
+      <div class="panel"><h2>👥 Client Health</h2>${healthRows}</div>
+      <div class="panel"><h2>🧑‍🤝‍🧑 Team Workload</h2>${teamRows}</div>
+    </div>
+    <div class="note" style="margin-top:6px;">This is your real data, pulled live from your own Notion workspace just now.</div>
+  `;
+  document.getElementById('dashboardArea').innerHTML = html;
+}
+
+async function fetchAndRender() {
+  const cfg = loadConfig();
+  const badge = document.getElementById('statusBadge');
+  const note = document.getElementById('noteText');
+
+  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients) {
+    badge.textContent = 'Not connected';
+    badge.className = 'badge off';
+    note.textContent = 'Connect your own Notion databases below to see your real numbers here. Until then, this shows nothing — it never displays anyone else\'s data.';
+    document.getElementById('dashboardArea').innerHTML = '';
+    return;
+  }
+
+  badge.textContent = 'Connecting…';
+  badge.className = 'badge off';
+
+  try {
+    const res = await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg)
+    });
+    if (!res.ok) throw new Error('Request failed: ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    badge.textContent = 'Connected — live';
+    badge.className = 'badge';
+    note.textContent = 'Showing your real, current data from your own Notion workspace.';
+    renderDashboard(data);
+  } catch (err) {
+    badge.textContent = 'Connection error';
+    badge.className = 'badge off';
+    note.textContent = 'Could not load your data (' + err.message + '). Check your token and database IDs in Settings.';
+    document.getElementById('dashboardArea').innerHTML = '';
+  }
+}
+
+fetchAndRender();
+</script>
+</body>
+</html>
