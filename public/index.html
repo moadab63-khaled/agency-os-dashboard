@@ -290,9 +290,9 @@ async function fetchAndRender() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cfg)
     });
-    if (!res.ok) throw new Error('Request failed: ' + res.status);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (data.error) throw new Error(data.error);
+    if (!res.ok) throw new Error('Request failed: ' + res.status);
     badge.textContent = 'Connected — live';
     badge.className = 'badge';
     note.textContent = 'Showing your real, current data from your own Notion workspace.';
