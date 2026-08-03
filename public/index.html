@@ -35,13 +35,14 @@
   .bar-fill { height: 100%; background: #E8C25C; }
   .empty { color: #5C647C; font-size: 12px; padding: 6px 0; }
 
-  .overlay { position: fixed; inset: 0; background: rgba(4,7,16,0.75); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; }
+  .overlay { position: fixed; inset: 0; background: rgba(4,7,16,0.75); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; overflow-y: auto; }
   .overlay.hidden { display: none; }
-  .modal { background: #161F38; border: 1px solid #23304F; border-radius: 16px; padding: 24px; max-width: 440px; width: 100%; }
+  .modal { background: #161F38; border: 1px solid #23304F; border-radius: 16px; padding: 24px; max-width: 440px; width: 100%; margin: 20px 0; }
   .modal h3 { font-family: 'Cairo', sans-serif; color: #F4E4B8; margin-bottom: 6px; font-size: 17px; }
   .modal p { font-size: 12px; color: #8A93AC; margin-bottom: 16px; line-height: 1.5; }
   .modal label { display: block; font-size: 12px; color: #C7CEDE; margin: 10px 0 4px; }
   .modal input { width: 100%; background: #0F1729; border: 1px solid #23304F; border-radius: 8px; padding: 9px 10px; color: #E8ECF4; font-size: 13px; }
+  .modal .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #E8C25C; font-weight: 700; margin-top: 16px; padding-top: 12px; border-top: 1px solid #23304F; }
   .modal .actions { display: flex; gap: 10px; margin-top: 18px; }
   .modal button { flex: 1; border: none; border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; }
   .btn-save { background: #E8C25C; color: #0F1729; }
@@ -80,8 +81,19 @@
     <label>Finance database ID</label>
     <input id="inFinance" type="text" placeholder="e.g. 0fa11247939c...">
 
-    <label>Team database ID (Agency Edition only)</label>
-    <input id="inTeam" type="text" placeholder="optional">
+    <div class="section-label">Optional — Agency Edition</div>
+    <label>Team database ID</label>
+    <input id="inTeam" type="text" placeholder="optional, Agency Edition only">
+
+    <div class="section-label">Optional — extra metrics</div>
+    <label>Projects database ID</label>
+    <input id="inProjects" type="text" placeholder="optional — adds Active Projects">
+
+    <label>Tasks database ID</label>
+    <input id="inTasks" type="text" placeholder="optional — adds Tasks Due This Week">
+
+    <label>Content Calendar database ID</label>
+    <input id="inContent" type="text" placeholder="optional — adds Content in Pipeline">
 
     <div class="actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
@@ -106,6 +118,9 @@ function openModal() {
     document.getElementById('inClients').value = (cfg.databases && cfg.databases.clients) || '';
     document.getElementById('inFinance').value = (cfg.databases && cfg.databases.finance) || '';
     document.getElementById('inTeam').value = (cfg.databases && cfg.databases.team) || '';
+    document.getElementById('inProjects').value = (cfg.databases && cfg.databases.projects) || '';
+    document.getElementById('inTasks').value = (cfg.databases && cfg.databases.tasks) || '';
+    document.getElementById('inContent').value = (cfg.databases && cfg.databases.content) || '';
   }
   document.getElementById('overlay').classList.remove('hidden');
 }
@@ -118,6 +133,9 @@ function saveAndLoad() {
       clients: document.getElementById('inClients').value.trim(),
       finance: document.getElementById('inFinance').value.trim(),
       team: document.getElementById('inTeam').value.trim(),
+      projects: document.getElementById('inProjects').value.trim(),
+      tasks: document.getElementById('inTasks').value.trim(),
+      content: document.getElementById('inContent').value.trim(),
     }
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
@@ -134,15 +152,39 @@ function healthDot(status) {
   return 'yellow';
 }
 
+// Looks up a property by trying several common name variants, since exact
+// property names can differ slightly between a buyer's duplicated workspace.
+function findProp(properties, candidates) {
+  properties = properties || {};
+  for (const name of candidates) {
+    if (properties[name] !== undefined) return properties[name];
+  }
+  return undefined;
+}
+
+function selectName(p) { return p && p.select ? p.select.name : null; }
+function numberVal(p) { return p && typeof p.number === 'number' ? p.number : 0; }
+function titleText(p) { return p && p.title && p.title[0] ? p.title[0].plain_text : ''; }
+function dateVal(p) { return p && p.date && p.date.start ? new Date(p.date.start) : null; }
+
+const STATUS_NAMES = ['Status'];
+const NAME_NAMES = ['Name', 'Title'];
+const DUE_DATE_NAMES = ['Due Date', 'Due', 'Deadline'];
+const DONE_VALUES = ['done', 'completed', 'closed', 'published', 'posted', 'live', 'archived', 'cancelled', 'churned', 'delivered'];
+
+function isDoneLike(status) {
+  return !!status && DONE_VALUES.includes(status.toLowerCase());
+}
+
 function renderDashboard(data) {
   const clients = (data.clients && data.clients.results) || [];
   const finance = (data.finance && data.finance.results) || [];
   const team = (data.team && data.team.results) || [];
+  const projects = (data.projects && data.projects.results) || [];
+  const tasks = (data.tasks && data.tasks.results) || [];
+  const content = (data.content && data.content.results) || [];
 
   const getProp = (page, name) => (page.properties || {})[name];
-  const titleText = (p) => p && p.title && p.title[0] ? p.title[0].plain_text : '';
-  const selectName = (p) => p && p.select ? p.select.name : null;
-  const numberVal = (p) => p && typeof p.number === 'number' ? p.number : 0;
 
   let revenue = 0, overdue = 0;
   finance.forEach(f => {
@@ -174,18 +216,54 @@ function renderDashboard(data) {
     return `<div class="line"><span>${esc(name)}${role ? ' — ' + esc(role) : ''}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div></div>`;
   }).join('') || '<div class="empty">No team members found (Freelancer Edition has no Team database).</div>';
 
+  // Optional metrics — only computed/shown when that database was connected.
+  const hasProjects = !!(data.projects);
+  const hasTasks = !!(data.tasks);
+  const hasContent = !!(data.content);
+
+  const activeProjectsCount = projects.filter(p => {
+    const status = selectName(findProp(p.properties, STATUS_NAMES));
+    return !isDoneLike(status);
+  }).length;
+
+  const now = new Date();
+  const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const tasksDueThisWeek = tasks.filter(t => {
+    const status = selectName(findProp(t.properties, STATUS_NAMES));
+    if (isDoneLike(status)) return false;
+    const due = dateVal(findProp(t.properties, DUE_DATE_NAMES));
+    return due && due >= now && due <= weekFromNow;
+  }).length;
+
+  const contentInPipeline = content.filter(c => {
+    const status = selectName(findProp(c.properties, STATUS_NAMES));
+    return !isDoneLike(status);
+  }).length;
+
+  let extraCards = '';
+  if (hasProjects) {
+    extraCards += `<div class="card"><div class="label">Active Projects</div><div class="value">${activeProjectsCount}</div></div>`;
+  }
+  if (hasTasks) {
+    extraCards += `<div class="card"><div class="label">Tasks Due This Week</div><div class="value gold">${tasksDueThisWeek}</div></div>`;
+  }
+  if (hasContent) {
+    extraCards += `<div class="card"><div class="label">Content in Pipeline</div><div class="value">${contentInPipeline}</div></div>`;
+  }
+
   const html = `
     <div class="grid">
       <div class="card"><div class="label">Revenue (Paid)</div><div class="value green">$${revenue.toLocaleString()}</div></div>
       <div class="card"><div class="label">Overdue Invoices</div><div class="value red">$${overdue.toLocaleString()}</div></div>
       <div class="card"><div class="label">Active Clients</div><div class="value">${activeClients.length}</div></div>
       <div class="card"><div class="label">Needs Attention</div><div class="value gold">${needsAttention.length}</div></div>
+      ${extraCards}
     </div>
     <div class="row">
       <div class="panel"><h2>👥 Client Health</h2>${healthRows}</div>
       <div class="panel"><h2>🧑‍🤝‍🧑 Team Workload</h2>${teamRows}</div>
     </div>
-    <div class="note" style="margin-top:6px;">This is your real data, pulled live from your own Notion workspace just now.</div>
+    <div class="note" style="margin-top:6px;">This is your real data, pulled live from your own Notion workspace just now. Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
   `;
   document.getElementById('dashboardArea').innerHTML = html;
 }
