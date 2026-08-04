@@ -26,14 +26,20 @@
   .row { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; margin-bottom: 14px; }
   @media (max-width: 760px) { .row { grid-template-columns: 1fr; } }
   .panel { background: #161F38; border: 1px solid #23304F; border-radius: 14px; padding: 18px; }
-  .panel h2 { font-family: 'Cairo', sans-serif; font-size: 14px; color: #F4E4B8; margin-bottom: 12px; }
-  .line { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1E2942; font-size: 13px; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .panel-head h2 { font-family: 'Cairo', sans-serif; font-size: 14px; color: #F4E4B8; margin-bottom: 0; }
+  .add-btn { background: rgba(232,194,92,0.14); border: 1px solid #E8C25C; color: #E8C25C; font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 8px; cursor: pointer; }
+  .line { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1E2942; font-size: 13px; gap: 8px; }
   .line:last-child { border-bottom: none; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+  .line-left { display: flex; align-items: center; min-width: 0; }
+  .line-left span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; flex-shrink: 0; }
   .dot.green { background: #4ADE80; } .dot.yellow { background: #F5C044; } .dot.red { background: #F87171; }
   .bar-track { width: 80px; height: 6px; background: #1E2942; border-radius: 4px; overflow: hidden; }
   .bar-fill { height: 100%; background: #E8C25C; }
   .empty { color: #5C647C; font-size: 12px; padding: 6px 0; }
+  .edit-btn { background: none; border: none; color: #8A93AC; font-size: 13px; cursor: pointer; padding: 2px 6px; flex-shrink: 0; }
+  .edit-btn:hover { color: #E8C25C; }
 
   .overlay { position: fixed; inset: 0; background: rgba(4,7,16,0.75); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; overflow-y: auto; }
   .overlay.hidden { display: none; }
@@ -41,13 +47,14 @@
   .modal h3 { font-family: 'Cairo', sans-serif; color: #F4E4B8; margin-bottom: 6px; font-size: 17px; }
   .modal p { font-size: 12px; color: #8A93AC; margin-bottom: 16px; line-height: 1.5; }
   .modal label { display: block; font-size: 12px; color: #C7CEDE; margin: 10px 0 4px; }
-  .modal input { width: 100%; background: #0F1729; border: 1px solid #23304F; border-radius: 8px; padding: 9px 10px; color: #E8ECF4; font-size: 13px; }
+  .modal input, .modal select { width: 100%; background: #0F1729; border: 1px solid #23304F; border-radius: 8px; padding: 9px 10px; color: #E8ECF4; font-size: 13px; }
   .modal .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #E8C25C; font-weight: 700; margin-top: 16px; padding-top: 12px; border-top: 1px solid #23304F; }
   .modal .actions { display: flex; gap: 10px; margin-top: 18px; }
   .modal button { flex: 1; border: none; border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; }
   .btn-save { background: #E8C25C; color: #0F1729; }
   .btn-cancel { background: #23304F; color: #E8ECF4; }
   .modal .helplink { font-size: 11px; color: #8A93AC; margin-top: 12px; display: block; }
+  .modal .error-text { font-size: 12px; color: #F87171; margin-top: 10px; display: none; }
 </style>
 </head>
 <body>
@@ -67,6 +74,7 @@
   <div id="dashboardArea"></div>
 </div>
 
+<!-- Settings modal (connect Notion) -->
 <div class="overlay hidden" id="overlay">
   <div class="modal">
     <h3>Connect your Notion data</h3>
@@ -100,6 +108,47 @@
       <button class="btn-save" onclick="saveAndLoad()">Save & Connect</button>
     </div>
     <span class="helplink">Where to find these: see the "Connect Your Live Dashboard" guide included with your purchase.</span>
+  </div>
+</div>
+
+<!-- Add / Edit Client modal -->
+<div class="overlay hidden" id="clientOverlay">
+  <div class="modal">
+    <h3 id="clientModalTitle">Add client</h3>
+    <p>This writes directly to your Notion Clients database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly.</p>
+
+    <input type="hidden" id="clientPageId">
+
+    <label>Name</label>
+    <input id="cName" type="text" placeholder="Client or company contact name">
+
+    <label>Company</label>
+    <input id="cCompany" type="text" placeholder="Company name">
+
+    <label>Email</label>
+    <input id="cEmail" type="text" placeholder="name@example.com">
+
+    <label>Status</label>
+    <select id="cStatus">
+      <option value="">— unchanged —</option>
+      <option value="Lead">Lead</option>
+      <option value="Active">Active</option>
+      <option value="Inactive">Inactive</option>
+    </select>
+
+    <label>Health Status</label>
+    <select id="cHealthStatus">
+      <option value="">— unchanged —</option>
+      <option value="Healthy">Healthy</option>
+      <option value="Watch">Watch</option>
+      <option value="At Risk">At Risk</option>
+    </select>
+
+    <div class="actions">
+      <button class="btn-cancel" onclick="closeClientModal()">Cancel</button>
+      <button class="btn-save" id="clientSaveBtn" onclick="saveClient()">Save</button>
+    </div>
+    <div class="error-text" id="clientError"></div>
   </div>
 </div>
 
@@ -165,6 +214,7 @@ function findProp(properties, candidates) {
 function selectName(p) { return p && p.select ? p.select.name : null; }
 function numberVal(p) { return p && typeof p.number === 'number' ? p.number : 0; }
 function titleText(p) { return p && p.title && p.title[0] ? p.title[0].plain_text : ''; }
+function richText(p) { return p && p.rich_text && p.rich_text[0] ? p.rich_text[0].plain_text : ''; }
 function dateVal(p) { return p && p.date && p.date.start ? new Date(p.date.start) : null; }
 
 const STATUS_NAMES = ['Status'];
@@ -176,6 +226,120 @@ function isDoneLike(status) {
   return !!status && DONE_VALUES.includes(status.toLowerCase());
 }
 
+// ---------------------------------------------------------------------
+// Add / Edit Client
+// ---------------------------------------------------------------------
+
+// Keep the last-rendered client pages in memory so the edit button can
+// look up full current values without a second Notion round-trip.
+let lastClientPages = {};
+
+function openClientModal(pageId) {
+  const cfg = loadConfig();
+  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients) {
+    alert('Connect your Notion Clients database in Settings first.');
+    return;
+  }
+
+  document.getElementById('clientError').style.display = 'none';
+  document.getElementById('clientPageId').value = pageId || '';
+
+  if (pageId && lastClientPages[pageId]) {
+    const page = lastClientPages[pageId];
+    const props = page.properties || {};
+    document.getElementById('clientModalTitle').textContent = 'Edit client';
+    document.getElementById('cName').value = titleText(props['Name']) || '';
+    document.getElementById('cCompany').value = richText(props['Company']) || '';
+    document.getElementById('cEmail').value = (props['Email'] && props['Email'].email) || '';
+    document.getElementById('cStatus').value = selectName(props['Status']) || '';
+    document.getElementById('cHealthStatus').value = selectName(props['Health Status']) || '';
+  } else {
+    document.getElementById('clientModalTitle').textContent = 'Add client';
+    document.getElementById('cName').value = '';
+    document.getElementById('cCompany').value = '';
+    document.getElementById('cEmail').value = '';
+    document.getElementById('cStatus').value = 'Lead';
+    document.getElementById('cHealthStatus').value = '';
+  }
+
+  document.getElementById('clientOverlay').classList.remove('hidden');
+}
+
+function closeClientModal() {
+  document.getElementById('clientOverlay').classList.add('hidden');
+}
+
+function buildClientProperties({ isNew }) {
+  const props = {};
+  const name = document.getElementById('cName').value.trim();
+  const company = document.getElementById('cCompany').value.trim();
+  const email = document.getElementById('cEmail').value.trim();
+  const status = document.getElementById('cStatus').value;
+  const healthStatus = document.getElementById('cHealthStatus').value;
+
+  // Name is required on create; on edit, only send it if changed/filled.
+  if (isNew || name) {
+    props['Name'] = { title: [{ text: { content: name } }] };
+  }
+  if (isNew || company) {
+    props['Company'] = { rich_text: [{ text: { content: company } }] };
+  }
+  if (isNew || email) {
+    props['Email'] = { email: email || null };
+  }
+  if (status) {
+    props['Status'] = { select: { name: status } };
+  } else if (isNew) {
+    props['Status'] = { select: { name: 'Lead' } };
+  }
+  if (healthStatus) {
+    props['Health Status'] = { select: { name: healthStatus } };
+  }
+  return props;
+}
+
+async function saveClient() {
+  const cfg = loadConfig();
+  const pageId = document.getElementById('clientPageId').value;
+  const isNew = !pageId;
+  const name = document.getElementById('cName').value.trim();
+  const errorEl = document.getElementById('clientError');
+  errorEl.style.display = 'none';
+
+  if (isNew && !name) {
+    errorEl.textContent = 'Name is required.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const properties = buildClientProperties({ isNew });
+  const body = isNew
+    ? { token: cfg.token, action: 'create', databaseId: cfg.databases.clients, properties }
+    : { token: cfg.token, action: 'update', pageId, properties };
+
+  const saveBtn = document.getElementById('clientSaveBtn');
+  saveBtn.textContent = 'Saving…';
+  saveBtn.disabled = true;
+
+  try {
+    const res = await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
+    closeClientModal();
+    fetchAndRender();
+  } catch (err) {
+    errorEl.textContent = 'Could not save (' + err.message + ').';
+    errorEl.style.display = 'block';
+  } finally {
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = false;
+  }
+}
+
 function renderDashboard(data) {
   const clients = (data.clients && data.clients.results) || [];
   const finance = (data.finance && data.finance.results) || [];
@@ -183,6 +347,10 @@ function renderDashboard(data) {
   const projects = (data.projects && data.projects.results) || [];
   const tasks = (data.tasks && data.tasks.results) || [];
   const content = (data.content && data.content.results) || [];
+
+  // Cache full client pages by ID for the edit modal.
+  lastClientPages = {};
+  clients.forEach(c => { lastClientPages[c.id] = c; });
 
   const getProp = (page, name) => (page.properties || {})[name];
 
@@ -204,7 +372,13 @@ function renderDashboard(data) {
   const healthRows = clients.slice(0, 6).map(c => {
     const name = titleText(getProp(c, 'Name')) || 'Unnamed client';
     const status = selectName(getProp(c, 'Health Status')) || '—';
-    return `<div class="line"><span><span class="dot ${healthDot(status)}"></span>${esc(name)}</span><span style="color:#8A93AC;font-size:12px;">${esc(status)}</span></div>`;
+    return `<div class="line">
+      <span class="line-left"><span class="dot ${healthDot(status)}"></span><span>${esc(name)}</span></span>
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
+        <button class="edit-btn" onclick="openClientModal('${c.id}')" title="Edit client">✎</button>
+      </span>
+    </div>`;
   }).join('') || '<div class="empty">No clients found in this database yet.</div>';
 
   const maxWorkload = Math.max(1, ...team.map(t => numberVal(getProp(t, 'Current Workload'))));
@@ -260,7 +434,13 @@ function renderDashboard(data) {
       ${extraCards}
     </div>
     <div class="row">
-      <div class="panel"><h2>👥 Client Health</h2>${healthRows}</div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>👥 Client Health</h2>
+          <button class="add-btn" onclick="openClientModal()">+ Add Client</button>
+        </div>
+        ${healthRows}
+      </div>
       <div class="panel"><h2>🧑‍🤝‍🧑 Team Workload</h2>${teamRows}</div>
     </div>
     <div class="note" style="margin-top:6px;">This is your real data, pulled live from your own Notion workspace just now. Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
