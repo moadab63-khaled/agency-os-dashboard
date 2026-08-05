@@ -290,9 +290,7 @@ function findProp(properties, candidates) {
 }
 
 function selectName(p) { return p && p.select ? p.select.name : null; }
-// Tasks' "Status" property is a Notion "status" type, not "select" — different JSON shape.
 function statusTypeName(p) { return p && p.status ? p.status.name : null; }
-// Reads whichever of select/status is present, so shared helpers work across databases.
 function anyStatusName(p) { return selectName(p) || statusTypeName(p); }
 function numberVal(p) { return p && typeof p.number === 'number' ? p.number : 0; }
 function titleText(p) { return p && p.title && p.title[0] ? p.title[0].plain_text : ''; }
@@ -524,6 +522,17 @@ async function saveProject() {
 }
 
 let lastTaskPages = {};
+let taskTitleProp = null;
+
+function detectTitleProp(pages) {
+  for (const id in pages) {
+    const props = pages[id].properties || {};
+    for (const key in props) {
+      if (props[key] && props[key].type === 'title') return key;
+    }
+  }
+  return null;
+}
 
 function openTaskModal(pageId) {
   const cfg = loadConfig();
@@ -539,7 +548,8 @@ function openTaskModal(pageId) {
     const page = lastTaskPages[pageId];
     const props = page.properties || {};
     document.getElementById('taskModalTitle').textContent = 'Edit task';
-    document.getElementById('tName').value = titleText(findProp(props, NAME_NAMES)) || '';
+    const titleProp = taskTitleProp && props[taskTitleProp] ? props[taskTitleProp] : findProp(props, NAME_NAMES);
+    document.getElementById('tName').value = titleText(titleProp) || '';
     document.getElementById('tDueDate').value = dateStr(findProp(props, DUE_DATE_NAMES));
     document.getElementById('tStatus').value = anyStatusName(findProp(props, STATUS_NAMES)) || '';
   } else {
@@ -561,14 +571,14 @@ function buildTaskProperties({ isNew }) {
   const name = document.getElementById('tName').value.trim();
   const dueDate = document.getElementById('tDueDate').value;
   const status = document.getElementById('tStatus').value;
+  const titleKey = taskTitleProp || 'Name';
 
   if (isNew || name) {
-    props['Name'] = { title: [{ text: { content: name } }] };
+    props[titleKey] = { title: [{ text: { content: name } }] };
   }
   if (dueDate) {
     props['Due Date'] = { date: { start: dueDate } };
   }
-  // Tasks' "Status" is a Notion "status" property (not "select") — different write shape.
   if (status) {
     props['Status'] = { status: { name: status } };
   } else if (isNew) {
@@ -633,6 +643,7 @@ function renderDashboard(data) {
   projects.forEach(p => { lastProjectPages[p.id] = p; });
   lastTaskPages = {};
   tasks.forEach(t => { lastTaskPages[t.id] = t; });
+  taskTitleProp = detectTitleProp(lastTaskPages);
 
   const getProp = (page, name) => (page.properties || {})[name];
 
@@ -734,7 +745,8 @@ function renderDashboard(data) {
   let tasksPanel = '';
   if (hasTasks) {
     const taskRows = tasks.slice(0, 6).map(t => {
-      const name = titleText(findProp(t.properties, NAME_NAMES)) || 'Unnamed task';
+      const titleProp = taskTitleProp && t.properties[taskTitleProp] ? t.properties[taskTitleProp] : findProp(t.properties, NAME_NAMES);
+      const name = titleText(titleProp) || 'Unnamed task';
       const status = anyStatusName(findProp(t.properties, STATUS_NAMES)) || '—';
       return `<div class="line">
         <span class="line-left"><span class="dot ${taskStatusDot(status)}"></span><span>${esc(name)}</span></span>
