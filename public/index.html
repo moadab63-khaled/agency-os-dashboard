@@ -189,6 +189,36 @@
   </div>
 </div>
 
+<!-- Add / Edit Task modal -->
+<div class="overlay hidden" id="taskOverlay">
+  <div class="modal">
+    <h3 id="taskModalTitle">Add task</h3>
+    <p>This writes directly to your Notion Tasks database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly. Assignee and Project links aren't editable here yet — use Notion directly for those.</p>
+
+    <input type="hidden" id="taskPageId">
+
+    <label>Name</label>
+    <input id="tName" type="text" placeholder="Task name">
+
+    <label>Due Date</label>
+    <input id="tDueDate" type="date">
+
+    <label>Status</label>
+    <select id="tStatus">
+      <option value="">— unchanged —</option>
+      <option value="Not started">Not started</option>
+      <option value="In progress">In progress</option>
+      <option value="Done">Done</option>
+    </select>
+
+    <div class="actions">
+      <button class="btn-cancel" onclick="closeTaskModal()">Cancel</button>
+      <button class="btn-save" id="taskSaveBtn" onclick="saveTask()">Save</button>
+    </div>
+    <div class="error-text" id="taskError"></div>
+  </div>
+</div>
+
 <script>
 const STORAGE_KEY = 'agencyOsDashboardConfig';
 
@@ -245,6 +275,12 @@ function statusDot(status) {
   return 'red';
 }
 
+function taskStatusDot(status) {
+  if (status === 'Done') return 'green';
+  if (status === 'In progress') return 'yellow';
+  return 'red';
+}
+
 function findProp(properties, candidates) {
   properties = properties || {};
   for (const name of candidates) {
@@ -254,6 +290,10 @@ function findProp(properties, candidates) {
 }
 
 function selectName(p) { return p && p.select ? p.select.name : null; }
+// Tasks' "Status" property is a Notion "status" type, not "select" — different JSON shape.
+function statusTypeName(p) { return p && p.status ? p.status.name : null; }
+// Reads whichever of select/status is present, so shared helpers work across databases.
+function anyStatusName(p) { return selectName(p) || statusTypeName(p); }
 function numberVal(p) { return p && typeof p.number === 'number' ? p.number : 0; }
 function titleText(p) { return p && p.title && p.title[0] ? p.title[0].plain_text : ''; }
 function richText(p) { return p && p.rich_text && p.rich_text[0] ? p.rich_text[0].plain_text : ''; }
@@ -483,6 +523,102 @@ async function saveProject() {
   }
 }
 
+let lastTaskPages = {};
+
+function openTaskModal(pageId) {
+  const cfg = loadConfig();
+  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.tasks) {
+    alert('Connect your Notion Tasks database in Settings first.');
+    return;
+  }
+
+  document.getElementById('taskError').style.display = 'none';
+  document.getElementById('taskPageId').value = pageId || '';
+
+  if (pageId && lastTaskPages[pageId]) {
+    const page = lastTaskPages[pageId];
+    const props = page.properties || {};
+    document.getElementById('taskModalTitle').textContent = 'Edit task';
+    document.getElementById('tName').value = titleText(findProp(props, NAME_NAMES)) || '';
+    document.getElementById('tDueDate').value = dateStr(findProp(props, DUE_DATE_NAMES));
+    document.getElementById('tStatus').value = anyStatusName(findProp(props, STATUS_NAMES)) || '';
+  } else {
+    document.getElementById('taskModalTitle').textContent = 'Add task';
+    document.getElementById('tName').value = '';
+    document.getElementById('tDueDate').value = '';
+    document.getElementById('tStatus').value = 'Not started';
+  }
+
+  document.getElementById('taskOverlay').classList.remove('hidden');
+}
+
+function closeTaskModal() {
+  document.getElementById('taskOverlay').classList.add('hidden');
+}
+
+function buildTaskProperties({ isNew }) {
+  const props = {};
+  const name = document.getElementById('tName').value.trim();
+  const dueDate = document.getElementById('tDueDate').value;
+  const status = document.getElementById('tStatus').value;
+
+  if (isNew || name) {
+    props['Name'] = { title: [{ text: { content: name } }] };
+  }
+  if (dueDate) {
+    props['Due Date'] = { date: { start: dueDate } };
+  }
+  // Tasks' "Status" is a Notion "status" property (not "select") — different write shape.
+  if (status) {
+    props['Status'] = { status: { name: status } };
+  } else if (isNew) {
+    props['Status'] = { status: { name: 'Not started' } };
+  }
+  return props;
+}
+
+async function saveTask() {
+  const cfg = loadConfig();
+  const pageId = document.getElementById('taskPageId').value;
+  const isNew = !pageId;
+  const name = document.getElementById('tName').value.trim();
+  const errorEl = document.getElementById('taskError');
+  errorEl.style.display = 'none';
+
+  if (isNew && !name) {
+    errorEl.textContent = 'Name is required.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const properties = buildTaskProperties({ isNew });
+  const body = isNew
+    ? { token: cfg.token, action: 'create', databaseId: cfg.databases.tasks, properties }
+    : { token: cfg.token, action: 'update', pageId, properties };
+
+  const saveBtn = document.getElementById('taskSaveBtn');
+  saveBtn.textContent = 'Saving…';
+  saveBtn.disabled = true;
+
+  try {
+    const res = await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
+    closeTaskModal();
+    fetchAndRender();
+  } catch (err) {
+    errorEl.textContent = 'Could not save (' + err.message + ').';
+    errorEl.style.display = 'block';
+  } finally {
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = false;
+  }
+}
+
 function renderDashboard(data) {
   const clients = (data.clients && data.clients.results) || [];
   const finance = (data.finance && data.finance.results) || [];
@@ -495,6 +631,8 @@ function renderDashboard(data) {
   clients.forEach(c => { lastClientPages[c.id] = c; });
   lastProjectPages = {};
   projects.forEach(p => { lastProjectPages[p.id] = p; });
+  lastTaskPages = {};
+  tasks.forEach(t => { lastTaskPages[t.id] = t; });
 
   const getProp = (page, name) => (page.properties || {})[name];
 
@@ -546,7 +684,7 @@ function renderDashboard(data) {
   const now = new Date();
   const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const tasksDueThisWeek = tasks.filter(t => {
-    const status = selectName(findProp(t.properties, STATUS_NAMES));
+    const status = anyStatusName(findProp(t.properties, STATUS_NAMES));
     if (isDoneLike(status)) return false;
     const due = dateVal(findProp(t.properties, DUE_DATE_NAMES));
     return due && due >= now && due <= weekFromNow;
@@ -593,6 +731,31 @@ function renderDashboard(data) {
     `;
   }
 
+  let tasksPanel = '';
+  if (hasTasks) {
+    const taskRows = tasks.slice(0, 6).map(t => {
+      const name = titleText(findProp(t.properties, NAME_NAMES)) || 'Unnamed task';
+      const status = anyStatusName(findProp(t.properties, STATUS_NAMES)) || '—';
+      return `<div class="line">
+        <span class="line-left"><span class="dot ${taskStatusDot(status)}"></span><span>${esc(name)}</span></span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
+          <button class="edit-btn" onclick="openTaskModal('${t.id}')" title="Edit task">✎</button>
+        </span>
+      </div>`;
+    }).join('') || '<div class="empty">No tasks found in this database yet.</div>';
+
+    tasksPanel = `
+      <div class="panel" style="margin-top:14px;">
+        <div class="panel-head">
+          <h2>✅ Tasks</h2>
+          <button class="add-btn" onclick="openTaskModal()">+ Add Task</button>
+        </div>
+        ${taskRows}
+      </div>
+    `;
+  }
+
   const html = `
     <div class="grid">
       <div class="card"><div class="label">Revenue (Paid)</div><div class="value green">$${revenue.toLocaleString()}</div></div>
@@ -612,6 +775,7 @@ function renderDashboard(data) {
       <div class="panel"><h2>🧑‍🤝‍🧑 Team Workload</h2>${teamRows}</div>
     </div>
     ${projectsPanel}
+    ${tasksPanel}
     <div class="note" style="margin-top:6px;">This is your real data, pulled live from your own Notion workspace just now. Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
   `;
   document.getElementById('dashboardArea').innerHTML = html;
