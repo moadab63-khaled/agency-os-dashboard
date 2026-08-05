@@ -11,8 +11,43 @@
 //   (no action / "query")  — existing behavior: query multiple databases
 //   "create"                — create a new page (record) in a database
 //   "update"                — update properties on an existing page
+//
+// Notion recently introduced "multiple data sources per database". Older
+// API versions (and the plain /v1/databases/{id}/query and
+// parent:{database_id} endpoints) reject any database that has more than
+// one data source with a 400 "multiple_data_sources_for_database" error.
+// To stay robust regardless of how a buyer's workspace is set up, every
+// database/create call below first tries the classic (legacy) approach,
+// and — only if Notion reports that specific error — transparently
+// resolves the database's data source(s) and retries against those
+// instead. This requires no configuration and no manual Notion cleanup.
 
 const NOTION_VERSION = "2022-06-28";
+const NOTION_VERSION_DATA_SOURCES = "2025-09-03";
+
+function isMultiDataSourceError(errText) {
+  return typeof errText === "string" && errText.includes("multiple_data_sources_for_database");
+}
+
+async function getDataSourceIds(databaseId, token) {
+  const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Notion-Version": NOTION_VERSION_DATA_SOURCES,
+    },
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Notion API error (${res.status}) resolving data sources: ${errText}`);
+  }
+  const data = await res.json();
+  const ids = (data.data_sources || []).map((ds) => ds.id).filter(Boolean);
+  if (!ids.length) {
+    throw new Error("Could not find any data sources for this database.");
+  }
+  return ids;
+}
 
 exports.handler = async (event) => {
   const cors = {
@@ -52,6 +87,12 @@ exports.handler = async (event) => {
     "Content-Type": "application/json",
   };
 
+  const notionHeadersDataSources = {
+    Authorization: `Bearer ${token}`,
+    "Notion-Version": NOTION_VERSION_DATA_SOURCES,
+    "Content-Type": "application/json",
+  };
+
   // ---- WRITE: create a new record -----------------------------------
   if (action === "create") {
     const { databaseId, properties } = payload;
@@ -63,7 +104,8 @@ exports.handler = async (event) => {
       };
     }
     try {
-      const res = await fetch("https://api.notion.com/v1/pages", {
+      // Try the classic single-data-source path first.
+      let res = await fetch("https://api.notion.com/v1/pages", {
         method: "POST",
         headers: notionHeaders,
         body: JSON.stringify({
@@ -71,7 +113,23 @@ exports.handler = async (event) => {
           properties,
         }),
       });
-      const data = await res.json();
+      let data = await res.json();
+
+      if (!res.ok && isMultiDataSourceError(JSON.stringify(data))) {
+        // Database has multiple data sources — resolve and create against
+        // the first one instead.
+        const dataSourceIds = await getDataSourceIds(databaseId, token);
+        res = await fetch("https://api.notion.com/v1/pages", {
+          method: "POST",
+          headers: notionHeadersDataSources,
+          body: JSON.stringify({
+            parent: { type: "data_source_id", data_source_id: dataSourceIds[0] },
+            properties,
+          }),
+        });
+        data = await res.json();
+      }
+
       if (!res.ok) {
         throw new Error(data.message || `Notion API error (${res.status})`);
       }
@@ -135,13 +193,12 @@ exports.handler = async (event) => {
     };
   }
 
-  async function queryDatabase(databaseId) {
-    if (!databaseId) return { results: [] };
+  async function queryDataSource(dataSourceId) {
     const res = await fetch(
-      `https://api.notion.com/v1/databases/${databaseId}/query`,
+      `https://api.notion.com/v1/data_sources/${dataSourceId}/query`,
       {
         method: "POST",
-        headers: notionHeaders,
+        headers: notionHeadersDataSources,
         body: JSON.stringify({ page_size: 50 }),
       }
     );
@@ -150,6 +207,36 @@ exports.handler = async (event) => {
       throw new Error(`Notion API error (${res.status}): ${errText}`);
     }
     return res.json();
+  }
+
+  async function queryDatabase(databaseId) {
+    if (!databaseId) return { results: [] };
+
+    const res = await fetch(
+      `https://api.notion.com/v1/databases/${databaseId}/query`,
+      {
+        method: "POST",
+        headers: notionHeaders,
+        body: JSON.stringify({ page_size: 50 }),
+      }
+    );
+
+    if (res.ok) {
+      return res.json();
+    }
+
+    const errText = await res.text();
+
+    if (!isMultiDataSourceError(errText)) {
+      throw new Error(`Notion API error (${res.status}): ${errText}`);
+    }
+
+    // Database has multiple data sources — resolve them and merge results
+    // from every data source into a single combined result set.
+    const dataSourceIds = await getDataSourceIds(databaseId, token);
+    const perSource = await Promise.all(dataSourceIds.map(queryDataSource));
+    const combinedResults = perSource.flatMap((r) => r.results || []);
+    return { results: combinedResults };
   }
 
   try {
