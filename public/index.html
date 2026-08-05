@@ -152,6 +152,43 @@
   </div>
 </div>
 
+<!-- Add / Edit Project modal -->
+<div class="overlay hidden" id="projectOverlay">
+  <div class="modal">
+    <h3 id="projectModalTitle">Add project</h3>
+    <p>This writes directly to your Notion Projects database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly. Client and Tasks links aren't editable here yet — use Notion directly for those.</p>
+
+    <input type="hidden" id="projectPageId">
+
+    <label>Name</label>
+    <input id="pName" type="text" placeholder="Project name">
+
+    <label>Deliverables</label>
+    <input id="pDeliverables" type="text" placeholder="What's being delivered">
+
+    <label>Start Date</label>
+    <input id="pStartDate" type="date">
+
+    <label>Due Date</label>
+    <input id="pDueDate" type="date">
+
+    <label>Status</label>
+    <select id="pStatus">
+      <option value="">— unchanged —</option>
+      <option value="Not Started">Not Started</option>
+      <option value="In Progress">In Progress</option>
+      <option value="Review">Review</option>
+      <option value="Completed">Completed</option>
+    </select>
+
+    <div class="actions">
+      <button class="btn-cancel" onclick="closeProjectModal()">Cancel</button>
+      <button class="btn-save" id="projectSaveBtn" onclick="saveProject()">Save</button>
+    </div>
+    <div class="error-text" id="projectError"></div>
+  </div>
+</div>
+
 <script>
 const STORAGE_KEY = 'agencyOsDashboardConfig';
 
@@ -201,8 +238,13 @@ function healthDot(status) {
   return 'yellow';
 }
 
-// Looks up a property by trying several common name variants, since exact
-// property names can differ slightly between a buyer's duplicated workspace.
+function statusDot(status) {
+  if (status === 'Completed') return 'green';
+  if (status === 'In Progress') return 'yellow';
+  if (status === 'Review') return 'yellow';
+  return 'red';
+}
+
 function findProp(properties, candidates) {
   properties = properties || {};
   for (const name of candidates) {
@@ -216,6 +258,7 @@ function numberVal(p) { return p && typeof p.number === 'number' ? p.number : 0;
 function titleText(p) { return p && p.title && p.title[0] ? p.title[0].plain_text : ''; }
 function richText(p) { return p && p.rich_text && p.rich_text[0] ? p.rich_text[0].plain_text : ''; }
 function dateVal(p) { return p && p.date && p.date.start ? new Date(p.date.start) : null; }
+function dateStr(p) { return (p && p.date && p.date.start) || ''; }
 
 const STATUS_NAMES = ['Status'];
 const NAME_NAMES = ['Name', 'Title'];
@@ -226,12 +269,6 @@ function isDoneLike(status) {
   return !!status && DONE_VALUES.includes(status.toLowerCase());
 }
 
-// ---------------------------------------------------------------------
-// Add / Edit Client
-// ---------------------------------------------------------------------
-
-// Keep the last-rendered client pages in memory so the edit button can
-// look up full current values without a second Notion round-trip.
 let lastClientPages = {};
 
 function openClientModal(pageId) {
@@ -277,7 +314,6 @@ function buildClientProperties({ isNew }) {
   const status = document.getElementById('cStatus').value;
   const healthStatus = document.getElementById('cHealthStatus').value;
 
-  // Name is required on create; on edit, only send it if changed/filled.
   if (isNew || name) {
     props['Name'] = { title: [{ text: { content: name } }] };
   }
@@ -340,6 +376,113 @@ async function saveClient() {
   }
 }
 
+let lastProjectPages = {};
+
+function openProjectModal(pageId) {
+  const cfg = loadConfig();
+  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.projects) {
+    alert('Connect your Notion Projects database in Settings first.');
+    return;
+  }
+
+  document.getElementById('projectError').style.display = 'none';
+  document.getElementById('projectPageId').value = pageId || '';
+
+  if (pageId && lastProjectPages[pageId]) {
+    const page = lastProjectPages[pageId];
+    const props = page.properties || {};
+    document.getElementById('projectModalTitle').textContent = 'Edit project';
+    document.getElementById('pName').value = titleText(props['Name']) || '';
+    document.getElementById('pDeliverables').value = richText(props['Deliverables']) || '';
+    document.getElementById('pStartDate').value = dateStr(props['Start Date']);
+    document.getElementById('pDueDate').value = dateStr(props['Due Date']);
+    document.getElementById('pStatus').value = selectName(props['Status']) || '';
+  } else {
+    document.getElementById('projectModalTitle').textContent = 'Add project';
+    document.getElementById('pName').value = '';
+    document.getElementById('pDeliverables').value = '';
+    document.getElementById('pStartDate').value = '';
+    document.getElementById('pDueDate').value = '';
+    document.getElementById('pStatus').value = 'Not Started';
+  }
+
+  document.getElementById('projectOverlay').classList.remove('hidden');
+}
+
+function closeProjectModal() {
+  document.getElementById('projectOverlay').classList.add('hidden');
+}
+
+function buildProjectProperties({ isNew }) {
+  const props = {};
+  const name = document.getElementById('pName').value.trim();
+  const deliverables = document.getElementById('pDeliverables').value.trim();
+  const startDate = document.getElementById('pStartDate').value;
+  const dueDate = document.getElementById('pDueDate').value;
+  const status = document.getElementById('pStatus').value;
+
+  if (isNew || name) {
+    props['Name'] = { title: [{ text: { content: name } }] };
+  }
+  if (isNew || deliverables) {
+    props['Deliverables'] = { rich_text: [{ text: { content: deliverables } }] };
+  }
+  if (startDate) {
+    props['Start Date'] = { date: { start: startDate } };
+  }
+  if (dueDate) {
+    props['Due Date'] = { date: { start: dueDate } };
+  }
+  if (status) {
+    props['Status'] = { select: { name: status } };
+  } else if (isNew) {
+    props['Status'] = { select: { name: 'Not Started' } };
+  }
+  return props;
+}
+
+async function saveProject() {
+  const cfg = loadConfig();
+  const pageId = document.getElementById('projectPageId').value;
+  const isNew = !pageId;
+  const name = document.getElementById('pName').value.trim();
+  const errorEl = document.getElementById('projectError');
+  errorEl.style.display = 'none';
+
+  if (isNew && !name) {
+    errorEl.textContent = 'Name is required.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const properties = buildProjectProperties({ isNew });
+  const body = isNew
+    ? { token: cfg.token, action: 'create', databaseId: cfg.databases.projects, properties }
+    : { token: cfg.token, action: 'update', pageId, properties };
+
+  const saveBtn = document.getElementById('projectSaveBtn');
+  saveBtn.textContent = 'Saving…';
+  saveBtn.disabled = true;
+
+  try {
+    const res = await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
+    closeProjectModal();
+    fetchAndRender();
+  } catch (err) {
+    errorEl.textContent = 'Could not save (' + err.message + ').';
+    errorEl.style.display = 'block';
+  } finally {
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = false;
+  }
+}
+
 function renderDashboard(data) {
   const clients = (data.clients && data.clients.results) || [];
   const finance = (data.finance && data.finance.results) || [];
@@ -348,9 +491,10 @@ function renderDashboard(data) {
   const tasks = (data.tasks && data.tasks.results) || [];
   const content = (data.content && data.content.results) || [];
 
-  // Cache full client pages by ID for the edit modal.
   lastClientPages = {};
   clients.forEach(c => { lastClientPages[c.id] = c; });
+  lastProjectPages = {};
+  projects.forEach(p => { lastProjectPages[p.id] = p; });
 
   const getProp = (page, name) => (page.properties || {})[name];
 
@@ -390,7 +534,6 @@ function renderDashboard(data) {
     return `<div class="line"><span>${esc(name)}${role ? ' — ' + esc(role) : ''}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div></div>`;
   }).join('') || '<div class="empty">No team members found (Freelancer Edition has no Team database).</div>';
 
-  // Optional metrics — only computed/shown when that database was connected.
   const hasProjects = !!(data.projects);
   const hasTasks = !!(data.tasks);
   const hasContent = !!(data.content);
@@ -425,6 +568,31 @@ function renderDashboard(data) {
     extraCards += `<div class="card"><div class="label">Content in Pipeline</div><div class="value">${contentInPipeline}</div></div>`;
   }
 
+  let projectsPanel = '';
+  if (hasProjects) {
+    const projectRows = projects.slice(0, 6).map(p => {
+      const name = titleText(findProp(p.properties, NAME_NAMES)) || 'Unnamed project';
+      const status = selectName(findProp(p.properties, STATUS_NAMES)) || '—';
+      return `<div class="line">
+        <span class="line-left"><span class="dot ${statusDot(status)}"></span><span>${esc(name)}</span></span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
+          <button class="edit-btn" onclick="openProjectModal('${p.id}')" title="Edit project">✎</button>
+        </span>
+      </div>`;
+    }).join('') || '<div class="empty">No projects found in this database yet.</div>';
+
+    projectsPanel = `
+      <div class="panel" style="margin-top:14px;">
+        <div class="panel-head">
+          <h2>📁 Projects</h2>
+          <button class="add-btn" onclick="openProjectModal()">+ Add Project</button>
+        </div>
+        ${projectRows}
+      </div>
+    `;
+  }
+
   const html = `
     <div class="grid">
       <div class="card"><div class="label">Revenue (Paid)</div><div class="value green">$${revenue.toLocaleString()}</div></div>
@@ -443,6 +611,7 @@ function renderDashboard(data) {
       </div>
       <div class="panel"><h2>🧑‍🤝‍🧑 Team Workload</h2>${teamRows}</div>
     </div>
+    ${projectsPanel}
     <div class="note" style="margin-top:6px;">This is your real data, pulled live from your own Notion workspace just now. Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
   `;
   document.getElementById('dashboardArea').innerHTML = html;
