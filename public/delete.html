@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agency OS — Delete Tool</title>
+<style>
+  body { background: #0F1729; font-family: sans-serif; color: #E8ECF4; padding: 24px 18px; }
+  h1 { color: #F4E4B8; font-size: 20px; margin-bottom: 16px; }
+  p { color: #8A93AC; font-size: 13px; margin-bottom: 16px; }
+  input { width: 100%; background: #161F38; border: 1px solid #23304F; border-radius: 8px; padding: 10px; color: #E8ECF4; font-size: 14px; margin-bottom: 12px; }
+  button { width: 100%; background: #E8C25C; color: #0F1729; border: none; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 700; }
+  #msg { margin-top: 14px; font-size: 13px; }
+</style>
+</head>
+<body>
+  <h1>🗑 Delete a record</h1>
+  <p>Paste the Notion page ID (or full page URL) of the record you want to delete. This uses the token already saved in Settings on the main dashboard.</p>
+  <input id="pid" placeholder="Page ID or Notion URL">
+  <button onclick="doDelete()">Delete record</button>
+  <div id="msg"></div>
+<script>
+function extractId(v) {
+  v = v.trim();
+  const m = v.match(/[0-9a-fA-F]{32}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+  return m ? m[0] : v;
+}
+async function doDelete() {
+  const cfg = JSON.parse(localStorage.getItem('agencyOsDashboardConfig') || 'null');
+  const msg = document.getElementById('msg');
+  if (!cfg || !cfg.token) { msg.textContent = 'No saved token found — open the main dashboard and connect Settings first.'; return; }
+  const pageId = extractId(document.getElementById('pid').value);
+  if (!pageId) { msg.textContent = 'Enter a page ID.'; return; }
+  if (!confirm('Delete this record? Cannot be undone.')) return;
+  msg.textContent = 'Deleting…';
+  try {
+    const res = await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: cfg.token, action: 'delete', pageId })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Failed');
+    msg.textContent = '✅ Deleted successfully.';
+  } catch (e) {
+    msg.textContent = '❌ ' + e.message;
+  }
+}
+</script>
+</body>
+</html>
