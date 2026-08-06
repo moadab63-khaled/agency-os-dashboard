@@ -47,7 +47,8 @@
   .modal h3 { font-family: 'Cairo', sans-serif; color: #F4E4B8; margin-bottom: 6px; font-size: 17px; }
   .modal p { font-size: 12px; color: #8A93AC; margin-bottom: 16px; line-height: 1.5; }
   .modal label { display: block; font-size: 12px; color: #C7CEDE; margin: 10px 0 4px; }
-  .modal input, .modal select { width: 100%; background: #0F1729; border: 1px solid #23304F; border-radius: 8px; padding: 9px 10px; color: #E8ECF4; font-size: 13px; }
+  .modal input, .modal select, .modal textarea { width: 100%; background: #0F1729; border: 1px solid #23304F; border-radius: 8px; padding: 9px 10px; color: #E8ECF4; font-size: 13px; font-family: 'Tajawal', sans-serif; }
+  .modal textarea { resize: vertical; min-height: 70px; }
   .modal .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #E8C25C; font-weight: 700; margin-top: 16px; padding-top: 12px; border-top: 1px solid #23304F; }
   .modal .actions { display: flex; gap: 10px; margin-top: 18px; }
   .modal button { flex: 1; border: none; border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; }
@@ -259,6 +260,44 @@
   </div>
 </div>
 
+<!-- Add / Edit Content modal -->
+<div class="overlay hidden" id="contentOverlay">
+  <div class="modal">
+    <h3 id="contentModalTitle">Add content</h3>
+    <p>This writes directly to your Notion Content Calendar database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly.</p>
+
+    <input type="hidden" id="contentPageId">
+
+    <label>Title</label>
+    <input id="ctTitle" type="text" placeholder="Content title">
+
+    <label>Body</label>
+    <textarea id="ctBody" placeholder="What this piece is about"></textarea>
+
+    <label>Publish Date</label>
+    <input id="ctPublishDate" type="date">
+
+    <label>Repurposed Output</label>
+    <textarea id="ctRepurposed" placeholder="Where/how this was repurposed"></textarea>
+
+    <label>Status</label>
+    <select id="ctStatus">
+      <option value="">— unchanged —</option>
+      <option value="Idea">Idea</option>
+      <option value="Writing">Writing</option>
+      <option value="Ready to Repurpose">Ready to Repurpose</option>
+      <option value="Published">Published</option>
+      <option value="Repurposed">Repurposed</option>
+    </select>
+
+    <div class="actions">
+      <button class="btn-cancel" onclick="closeContentModal()">Cancel</button>
+      <button class="btn-save" id="contentSaveBtn" onclick="saveContentEntry()">Save</button>
+    </div>
+    <div class="error-text" id="contentError"></div>
+  </div>
+</div>
+
 <script>
 const STORAGE_KEY = 'agencyOsDashboardConfig';
 
@@ -324,6 +363,13 @@ function taskStatusDot(status) {
 function financeStatusDot(status) {
   if (status === 'Paid') return 'green';
   if (status === 'Pending') return 'yellow';
+  return 'red';
+}
+
+function contentStatusDot(status) {
+  if (status === 'Published') return 'green';
+  if (status === 'Ready to Repurpose' || status === 'Repurposed') return 'yellow';
+  if (status === 'Writing') return 'yellow';
   return 'red';
 }
 
@@ -785,6 +831,116 @@ async function saveFinance() {
   }
 }
 
+let lastContentPages = {};
+let contentTitleProp = null;
+
+function openContentModal(pageId) {
+  const cfg = loadConfig();
+  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.content) {
+    alert('Connect your Notion Content Calendar database in Settings first.');
+    return;
+  }
+
+  document.getElementById('contentError').style.display = 'none';
+  document.getElementById('contentPageId').value = pageId || '';
+
+  if (pageId && lastContentPages[pageId]) {
+    const page = lastContentPages[pageId];
+    const props = page.properties || {};
+    document.getElementById('contentModalTitle').textContent = 'Edit content';
+    const titleProp = contentTitleProp && props[contentTitleProp] ? props[contentTitleProp] : findProp(props, NAME_NAMES);
+    document.getElementById('ctTitle').value = titleText(titleProp) || '';
+    document.getElementById('ctBody').value = richText(props['Body']) || '';
+    document.getElementById('ctPublishDate').value = dateStr(props['Publish Date']);
+    document.getElementById('ctRepurposed').value = richText(props['Repurposed Output']) || '';
+    document.getElementById('ctStatus').value = selectName(props['Status']) || '';
+  } else {
+    document.getElementById('contentModalTitle').textContent = 'Add content';
+    document.getElementById('ctTitle').value = '';
+    document.getElementById('ctBody').value = '';
+    document.getElementById('ctPublishDate').value = '';
+    document.getElementById('ctRepurposed').value = '';
+    document.getElementById('ctStatus').value = 'Idea';
+  }
+
+  document.getElementById('contentOverlay').classList.remove('hidden');
+}
+
+function closeContentModal() {
+  document.getElementById('contentOverlay').classList.add('hidden');
+}
+
+function buildContentProperties({ isNew }) {
+  const props = {};
+  const title = document.getElementById('ctTitle').value.trim();
+  const body = document.getElementById('ctBody').value.trim();
+  const publishDate = document.getElementById('ctPublishDate').value;
+  const repurposed = document.getElementById('ctRepurposed').value.trim();
+  const status = document.getElementById('ctStatus').value;
+  const titleKey = contentTitleProp || 'Title';
+
+  if (isNew || title) {
+    props[titleKey] = { title: [{ text: { content: title } }] };
+  }
+  if (isNew || body) {
+    props['Body'] = { rich_text: [{ text: { content: body } }] };
+  }
+  if (publishDate) {
+    props['Publish Date'] = { date: { start: publishDate } };
+  }
+  if (isNew || repurposed) {
+    props['Repurposed Output'] = { rich_text: [{ text: { content: repurposed } }] };
+  }
+  if (status) {
+    props['Status'] = { select: { name: status } };
+  } else if (isNew) {
+    props['Status'] = { select: { name: 'Idea' } };
+  }
+  return props;
+}
+
+async function saveContentEntry() {
+  const cfg = loadConfig();
+  const pageId = document.getElementById('contentPageId').value;
+  const isNew = !pageId;
+  const title = document.getElementById('ctTitle').value.trim();
+  const errorEl = document.getElementById('contentError');
+  errorEl.style.display = 'none';
+
+  if (isNew && !title) {
+    errorEl.textContent = 'Title is required.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const properties = buildContentProperties({ isNew });
+  const body = isNew
+    ? { token: cfg.token, action: 'create', databaseId: cfg.databases.content, properties }
+    : { token: cfg.token, action: 'update', pageId, properties };
+
+  const saveBtn = document.getElementById('contentSaveBtn');
+  saveBtn.textContent = 'Saving…';
+  saveBtn.disabled = true;
+
+  try {
+    const res = await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
+    closeContentModal();
+    fetchAndRender();
+  } catch (err) {
+    errorEl.textContent = 'Could not save (' + err.message + ').';
+    errorEl.style.display = 'block';
+  } finally {
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = false;
+  }
+}
+
 function renderDashboard(data) {
   const clients = (data.clients && data.clients.results) || [];
   const finance = (data.finance && data.finance.results) || [];
@@ -803,6 +959,9 @@ function renderDashboard(data) {
   lastFinancePages = {};
   finance.forEach(f => { lastFinancePages[f.id] = f; });
   financeTitleProp = detectTitleProp(lastFinancePages);
+  lastContentPages = {};
+  content.forEach(c => { lastContentPages[c.id] = c; });
+  contentTitleProp = detectTitleProp(lastContentPages);
 
   const getProp = (page, name) => (page.properties || {})[name];
 
@@ -951,6 +1110,32 @@ function renderDashboard(data) {
     </div>
   `;
 
+  let contentPanel = '';
+  if (hasContent) {
+    const contentRows = content.slice(0, 6).map(c => {
+      const titleProp = contentTitleProp && c.properties[contentTitleProp] ? c.properties[contentTitleProp] : findProp(c.properties, NAME_NAMES);
+      const name = titleText(titleProp) || 'Unnamed content';
+      const status = selectName(getProp(c, 'Status')) || '—';
+      return `<div class="line">
+        <span class="line-left"><span class="dot ${contentStatusDot(status)}"></span><span>${esc(name)}</span></span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
+          <button class="edit-btn" onclick="openContentModal('${c.id}')" title="Edit content">✎</button>
+        </span>
+      </div>`;
+    }).join('') || '<div class="empty">No content entries found in this database yet.</div>';
+
+    contentPanel = `
+      <div class="panel" style="margin-top:14px;">
+        <div class="panel-head">
+          <h2>📅 Content Calendar</h2>
+          <button class="add-btn" onclick="openContentModal()">+ Add Content</button>
+        </div>
+        ${contentRows}
+      </div>
+    `;
+  }
+
   const html = `
     <div class="grid">
       <div class="card"><div class="label">Revenue (Paid)</div><div class="value green">$${revenue.toLocaleString()}</div></div>
@@ -972,6 +1157,7 @@ function renderDashboard(data) {
     ${projectsPanel}
     ${tasksPanel}
     ${financePanel}
+    ${contentPanel}
     <div class="note" style="margin-top:6px;">This is your real data, pulled live from your own Notion workspace just now. Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
   `;
   document.getElementById('dashboardArea').innerHTML = html;
