@@ -7,10 +7,11 @@
 // or persisted here — the token lives only in the buyer's own browser
 // (localStorage) and passes through this function on each request.
 //
-// Supports three request shapes, distinguished by payload.action:
+// Supports four request shapes, distinguished by payload.action:
 //   (no action / "query")  — existing behavior: query multiple databases
 //   "create"                — create a new page (record) in a database
 //   "update"                — update properties on an existing page
+//   "delete"                — archive (soft-delete) an existing page
 //
 // Notion recently introduced "multiple data sources per database". Older
 // API versions (and the plain /v1/databases/{id}/query and
@@ -162,6 +163,40 @@ exports.handler = async (event) => {
         method: "PATCH",
         headers: notionHeaders,
         body: JSON.stringify({ properties }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || `Notion API error (${res.status})`);
+      }
+      return {
+        statusCode: 200,
+        headers: { ...cors, "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      };
+    } catch (err) {
+      return {
+        statusCode: 502,
+        headers: cors,
+        body: JSON.stringify({ error: err.message }),
+      };
+    }
+  }
+
+  // ---- WRITE: delete (archive) a record -------------------------------
+  if (action === "delete") {
+    const { pageId } = payload;
+    if (!pageId) {
+      return {
+        statusCode: 400,
+        headers: cors,
+        body: JSON.stringify({ error: "Missing pageId" }),
+      };
+    }
+    try {
+      const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+        method: "PATCH",
+        headers: notionHeaders,
+        body: JSON.stringify({ archived: true }),
       });
       const data = await res.json();
       if (!res.ok) {
