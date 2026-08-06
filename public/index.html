@@ -40,6 +40,8 @@
   .empty { color: #5C647C; font-size: 12px; padding: 6px 0; }
   .edit-btn { background: none; border: none; color: #8A93AC; font-size: 13px; cursor: pointer; padding: 2px 6px; flex-shrink: 0; }
   .edit-btn:hover { color: #E8C25C; }
+  .del-btn { background: none; border: none; color: #8A93AC; font-size: 13px; cursor: pointer; padding: 2px 6px; flex-shrink: 0; }
+  .del-btn:hover { color: #F87171; }
 
   .overlay { position: fixed; inset: 0; background: rgba(4,7,16,0.75); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; overflow-y: auto; }
   .overlay.hidden { display: none; }
@@ -442,6 +444,23 @@ function detectTitleProp(pages) {
     }
   }
   return null;
+}
+
+  async function deleteRecord(pageId) {
+  if (!confirm('Delete this record? This cannot be undone.')) return;
+  const cfg = loadConfig();
+  try {
+    const res = await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: cfg.token, action: 'delete', pageId })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Delete failed');
+    fetchAndRender();
+  } catch (err) {
+    alert('Could not delete (' + err.message + ').');
+  }
 }
 
 let lastClientPages = {};
@@ -1130,6 +1149,7 @@ function renderDashboard(data) {
       <span style="display:flex;align-items:center;gap:8px;">
         <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
         <button class="edit-btn" onclick="openClientModal('${c.id}')" title="Edit client">✎</button>
+        <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete client">🗑</button>
       </span>
     </div>`;
   }).join('') || '<div class="empty">No clients found in this database yet.</div>';
@@ -1146,6 +1166,7 @@ function renderDashboard(data) {
       <span style="display:flex;align-items:center;gap:8px;">
         <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>
         <button class="edit-btn" onclick="openTeamModal('${t.id}')" title="Edit team member">✎</button>
+        <button class="del-btn" onclick="deleteRecord('${t.id}')" title="Delete team member">🗑</button>
       </span>
     </div>`;
   }).join('') || '<div class="empty">No team members found (Freelancer Edition has no Team database).</div>';
@@ -1194,6 +1215,7 @@ function renderDashboard(data) {
         <span style="display:flex;align-items:center;gap:8px;">
           <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
           <button class="edit-btn" onclick="openProjectModal('${p.id}')" title="Edit project">✎</button>
+          <button class="del-btn" onclick="deleteRecord('${p.id}')" title="Delete project">🗑</button>
         </span>
       </div>`;
     }).join('') || '<div class="empty">No projects found in this database yet.</div>';
@@ -1220,6 +1242,7 @@ function renderDashboard(data) {
         <span style="display:flex;align-items:center;gap:8px;">
           <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
           <button class="edit-btn" onclick="openTaskModal('${t.id}')" title="Edit task">✎</button>
+          <button class="del-btn" onclick="deleteRecord('${t.id}')" title="Delete task">🗑</button>
         </span>
       </div>`;
     }).join('') || '<div class="empty">No tasks found in this database yet.</div>';
@@ -1245,6 +1268,7 @@ function renderDashboard(data) {
       <span style="display:flex;align-items:center;gap:8px;">
         <span style="color:#8A93AC;font-size:12px;">$${amt.toLocaleString()} · ${esc(status)}</span>
         <button class="edit-btn" onclick="openFinanceModal('${f.id}')" title="Edit entry">✎</button>
+        <button class="del-btn" onclick="deleteRecord('${f.id}')" title="Delete entry">🗑</button>
       </span>
     </div>`;
   }).join('') || '<div class="empty">No finance entries found in this database yet.</div>';
@@ -1270,6 +1294,7 @@ function renderDashboard(data) {
         <span style="display:flex;align-items:center;gap:8px;">
           <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
           <button class="edit-btn" onclick="openContentModal('${c.id}')" title="Edit content">✎</button>
+          <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete content">🗑</button>
         </span>
       </div>`;
     }).join('') || '<div class="empty">No content entries found in this database yet.</div>';
