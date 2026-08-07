@@ -210,10 +210,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    if (
-      url.pathname === "/netlify/functions/notion-data" ||
-      url.pathname === "/.netlify/functions/notion-data"
-    ) {
+if (url.pathname === "/api/notion-data") {
       if (request.method === "OPTIONS") {
         return new Response("", { status: 200, headers: CORS });
       }
