@@ -1,0 +1,9 @@
+{
+  "name": "agency-os-dashboard",
+  "compatibility_date": "2026-08-07",
+  "main": "worker.js",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  }
+}
