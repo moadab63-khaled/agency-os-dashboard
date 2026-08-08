@@ -58,6 +58,8 @@
   .btn-cancel { background: #23304F; color: #E8ECF4; }
   .modal .helplink { font-size: 11px; color: #8A93AC; margin-top: 12px; display: block; }
   .modal .error-text { font-size: 12px; color: #F87171; margin-top: 10px; display: none; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #161F38; border: 1px solid #E8C25C; color: #F4E4B8; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 20; opacity: 0; transition: opacity 0.25s ease; pointer-events: none; }
+  .toast.show { opacity: 1; }
 </style>
 </head>
 <body>
@@ -213,6 +215,8 @@
       <option value="In progress">In progress</option>
       <option value="Done">Done</option>
     </select>
+
+    <div id="autoAssignInfo" style="font-size:12px;color:#8A93AC;margin-top:10px;"></div>
 
     <div class="actions">
       <button class="btn-cancel" onclick="closeTaskModal()">Cancel</button>
@@ -680,6 +684,35 @@ async function saveProject() {
 let lastTaskPages = {};
 let taskTitleProp = null;
 
+function pickAutoAssignee() {
+  const members = Object.keys(lastTeamPages).map(id => {
+    const props = lastTeamPages[id].properties || {};
+    const titleProp = teamTitleProp && props[teamTitleProp] ? props[teamTitleProp] : findProp(props, NAME_NAMES);
+    return {
+      id,
+      name: titleText(titleProp) || 'Unnamed',
+      workload: numberVal(props['Current Workload'])
+    };
+  });
+  if (!members.length) return null;
+  members.sort((a, b) => a.workload - b.workload);
+  return members[0];
+}
+
+function showToast(message) {
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
 function openTaskModal(pageId) {
   const cfg = loadConfig();
   if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.tasks) {
@@ -689,6 +722,7 @@ function openTaskModal(pageId) {
 
   document.getElementById('taskError').style.display = 'none';
   document.getElementById('taskPageId').value = pageId || '';
+  const infoEl = document.getElementById('autoAssignInfo');
 
   if (pageId && lastTaskPages[pageId]) {
     const page = lastTaskPages[pageId];
@@ -698,11 +732,16 @@ function openTaskModal(pageId) {
     document.getElementById('tName').value = titleText(titleProp) || '';
     document.getElementById('tDueDate').value = dateStr(findProp(props, DUE_DATE_NAMES));
     document.getElementById('tStatus').value = anyStatusName(findProp(props, STATUS_NAMES)) || '';
+    infoEl.textContent = '';
   } else {
     document.getElementById('taskModalTitle').textContent = 'Add task';
     document.getElementById('tName').value = '';
     document.getElementById('tDueDate').value = '';
     document.getElementById('tStatus').value = 'Not started';
+    const candidate = pickAutoAssignee();
+    infoEl.textContent = candidate
+      ? `⚡ Will auto-assign to ${candidate.name} (lowest current workload).`
+      : 'No team members found — task will be created unassigned.';
   }
 
   document.getElementById('taskOverlay').classList.remove('hidden');
@@ -712,7 +751,7 @@ function closeTaskModal() {
   document.getElementById('taskOverlay').classList.add('hidden');
 }
 
-function buildTaskProperties({ isNew }) {
+function buildTaskProperties({ isNew, autoAssignCandidate }) {
   const props = {};
   const name = document.getElementById('tName').value.trim();
   const dueDate = document.getElementById('tDueDate').value;
@@ -729,6 +768,9 @@ function buildTaskProperties({ isNew }) {
     props['Status'] = { status: { name: status } };
   } else if (isNew) {
     props['Status'] = { status: { name: 'Not started' } };
+  }
+  if (isNew && autoAssignCandidate) {
+    props['Assignee'] = { relation: [{ id: autoAssignCandidate.id }] };
   }
   return props;
 }
@@ -747,7 +789,8 @@ async function saveTask() {
     return;
   }
 
-  const properties = buildTaskProperties({ isNew });
+  const autoAssignCandidate = isNew ? pickAutoAssignee() : null;
+  const properties = buildTaskProperties({ isNew, autoAssignCandidate });
   const body = isNew
     ? { token: cfg.token, action: 'create', databaseId: cfg.databases.tasks, properties }
     : { token: cfg.token, action: 'update', pageId, properties };
@@ -765,6 +808,9 @@ async function saveTask() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
     closeTaskModal();
+    if (isNew && autoAssignCandidate) {
+      showToast(`✓ Task assigned to ${autoAssignCandidate.name}`);
+    }
     fetchAndRender();
   } catch (err) {
     errorEl.textContent = 'Could not save (' + err.message + ').';
