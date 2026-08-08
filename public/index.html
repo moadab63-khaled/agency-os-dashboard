@@ -574,6 +574,81 @@ async function saveClient() {
   }
 }
 
+async function recalculateHealthScores() {
+  const cfg = loadConfig();
+  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients) {
+    alert('Connect your Notion Clients database in Settings first.');
+    return;
+  }
+
+  const btn = document.getElementById('recalcBtn');
+  const originalText = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = 'Calculating…'; btn.disabled = true; }
+
+  try {
+    const clientIds = Object.keys(lastClientPages);
+    if (!clientIds.length) {
+      showToast('No clients to recalculate.');
+      return;
+    }
+
+    const now = new Date();
+    let updatedCount = 0;
+
+    for (const clientId of clientIds) {
+      const client = lastClientPages[clientId];
+      const props = client.properties || {};
+
+      const financeRelations = (props['Finance'] && props['Finance'].relation) || [];
+      const overdueInvoices = financeRelations.filter(rel => {
+        const financePage = lastFinancePages[rel.id];
+        if (!financePage) return false;
+        const status = selectName((financePage.properties || {})['Invoice Status']);
+        return status === 'Overdue';
+      }).length;
+
+      const projectRelations = (props['Projects'] && props['Projects'].relation) || [];
+      const overdueProjects = projectRelations.filter(rel => {
+        const projectPage = lastProjectPages[rel.id];
+        if (!projectPage) return false;
+        const pProps = projectPage.properties || {};
+        const status = selectName(pProps['Status']);
+        if (status === 'Completed') return false;
+        const due = dateVal(pProps['Due Date']);
+        return due && due < now;
+      }).length;
+
+      let score = 100 - (overdueInvoices * 10) - (overdueProjects * 5);
+      score = Math.max(0, Math.min(100, score));
+      const healthStatus = score >= 80 ? 'Healthy' : score >= 50 ? 'Watch' : 'At Risk';
+
+      const res = await fetch('/api/notion-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: cfg.token,
+          action: 'update',
+          pageId: clientId,
+          properties: {
+            'Health Score': { number: score },
+            'Health Status': { select: { name: healthStatus } }
+          }
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.error || 'Update failed for a client');
+      updatedCount++;
+    }
+
+    showToast(`✓ Recalculated ${updatedCount} client${updatedCount === 1 ? '' : 's'}`);
+    fetchAndRender();
+  } catch (err) {
+    alert('Could not recalculate (' + err.message + ').');
+  } finally {
+    if (btn) { btn.textContent = originalText; btn.disabled = false; }
+  }
+}
+
 let lastProjectPages = {};
 
 function openProjectModal(pageId) {
@@ -1368,7 +1443,10 @@ function renderDashboard(data) {
       <div class="panel">
         <div class="panel-head">
           <h2>👥 Client Health</h2>
-          <button class="add-btn" onclick="openClientModal()">+ Add Client</button>
+          <span style="display:flex; gap:6px;">
+            <button class="add-btn" onclick="recalculateHealthScores()" id="recalcBtn">🔄 Recalculate</button>
+            <button class="add-btn" onclick="openClientModal()">+ Add Client</button>
+          </span>
         </div>
         ${healthRows}
       </div>
