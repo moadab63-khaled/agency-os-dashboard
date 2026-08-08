@@ -770,7 +770,7 @@ function buildTaskProperties({ isNew, autoAssignCandidate }) {
     props['Status'] = { status: { name: 'Not started' } };
   }
   if (isNew && autoAssignCandidate) {
-    props['Assignee'] = { relation: [{ id: autoAssignCandidate.id }] };
+    props['Assigned To'] = { relation: [{ id: autoAssignCandidate.id }] };
   }
   return props;
 }
