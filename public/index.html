@@ -1233,6 +1233,57 @@ async function saveContentEntry() {
   }
 }
 
+function computeFinanceStats() {
+  const entries = Object.values(lastFinancePages);
+  let paidRevenue = 0, pendingAmount = 0, overdueAmount = 0, expenseTotal = 0;
+  let paidCount = 0, pendingCount = 0, overdueCount = 0;
+  entries.forEach(f => {
+    const props = f.properties || {};
+    const type = selectName(props['Type']);
+    const status = selectName(props['Invoice Status']);
+    const amt = numberVal(props['Amount']);
+    if (type === 'Income' && status === 'Paid') { paidRevenue += amt; paidCount++; }
+    if (status === 'Pending') { pendingAmount += amt; pendingCount++; }
+    if (status === 'Overdue') { overdueAmount += amt; overdueCount++; }
+    if (type === 'Expense') expenseTotal += amt;
+  });
+  return {
+    paidRevenue, pendingAmount, overdueAmount, expenseTotal,
+    paidCount, pendingCount, overdueCount,
+    netCashFlow: paidRevenue - expenseTotal,
+    totalEntries: entries.length
+  };
+}
+
+async function generateFinancialInsights() {
+  const entries = Object.values(lastFinancePages);
+  if (!entries.length) {
+    showToast('No finance entries to analyze.');
+    return;
+  }
+  const btn = document.getElementById('insightsBtn');
+  const box = document.getElementById('financialInsightsBox');
+  const originalText = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = 'Analyzing…'; btn.disabled = true; }
+
+  try {
+    const stats = computeFinanceStats();
+    const res = await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'financial-insights', stats })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Could not generate insights');
+    box.textContent = data.result;
+    box.style.display = 'block';
+  } catch (err) {
+    alert('Could not generate insights (' + err.message + ').');
+  } finally {
+    if (btn) { btn.textContent = originalText; btn.disabled = false; }
+  }
+}
+
 async function repurposeContent(pageId) {
   const page = lastContentPages[pageId];
   if (!page) return;
@@ -1458,9 +1509,13 @@ function renderDashboard(data) {
     <div class="panel" style="margin-top:14px;">
       <div class="panel-head">
         <h2>💰 Finance</h2>
-        <button class="add-btn" onclick="openFinanceModal()">+ Add Entry</button>
+        <span style="display:flex; gap:6px;">
+          <button class="add-btn" onclick="generateFinancialInsights()" id="insightsBtn">🧠 Insights</button>
+          <button class="add-btn" onclick="openFinanceModal()">+ Add Entry</button>
+        </span>
       </div>
       ${financeRows}
+      <div id="financialInsightsBox" style="display:none; margin-top:10px; padding:10px; background:#0F1729; border:1px solid #23304F; border-radius:8px; font-size:12px; line-height:1.6; color:#C7CEDE; white-space:pre-wrap;"></div>
     </div>
   `;
 
