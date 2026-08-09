@@ -1330,8 +1330,7 @@ async function extractMeetingTasks() {
     const tasks = Array.isArray(data.tasks) ? data.tasks : [];
 
     if (!tasks.length) {
-      const rawDebug = data.raw ? ('<br><br><span style="color:#5C647C;">Debug — raw AI response:<br>' + esc(data.raw) + '</span>') : '';
-      resultBox.innerHTML = 'No clear action items found in these notes.' + rawDebug;
+      resultBox.textContent = 'No clear action items found in these notes.';
       resultBox.style.display = 'block';
       return;
     }
