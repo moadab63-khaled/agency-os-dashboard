@@ -116,11 +116,11 @@
   </div>
 </div>
 
-<!-- Add / Edit Client modal -->
+<!-- Add / Edit Client modal (also used for Client Intake) -->
 <div class="overlay hidden" id="clientOverlay">
   <div class="modal">
     <h3 id="clientModalTitle">Add client</h3>
-    <p>This writes directly to your Notion Clients database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly.</p>
+    <p id="clientModalDesc">This writes directly to your Notion Clients database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly.</p>
 
     <input type="hidden" id="clientPageId">
 
@@ -469,7 +469,7 @@ function detectTitleProp(pages) {
 
 let lastClientPages = {};
 
-function openClientModal(pageId) {
+function openClientModal(pageId, isIntake) {
   const cfg = loadConfig();
   if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients) {
     alert('Connect your Notion Clients database in Settings first.');
@@ -483,13 +483,23 @@ function openClientModal(pageId) {
     const page = lastClientPages[pageId];
     const props = page.properties || {};
     document.getElementById('clientModalTitle').textContent = 'Edit client';
+    document.getElementById('clientModalDesc').textContent = 'This writes directly to your Notion Clients database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly.';
     document.getElementById('cName').value = titleText(props['Name']) || '';
     document.getElementById('cCompany').value = richText(props['Company']) || '';
     document.getElementById('cEmail').value = (props['Email'] && props['Email'].email) || '';
     document.getElementById('cStatus').value = selectName(props['Status']) || '';
     document.getElementById('cHealthStatus').value = selectName(props['Health Status']) || '';
+  } else if (isIntake) {
+    document.getElementById('clientModalTitle').textContent = '📋 New Client Intake';
+    document.getElementById('clientModalDesc').textContent = "Fill this in while you're on the call with your new prospect. It saves straight to your Notion Clients database as a Lead.";
+    document.getElementById('cName').value = '';
+    document.getElementById('cCompany').value = '';
+    document.getElementById('cEmail').value = '';
+    document.getElementById('cStatus').value = 'Lead';
+    document.getElementById('cHealthStatus').value = '';
   } else {
     document.getElementById('clientModalTitle').textContent = 'Add client';
+    document.getElementById('clientModalDesc').textContent = 'This writes directly to your Notion Clients database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly.';
     document.getElementById('cName').value = '';
     document.getElementById('cCompany').value = '';
     document.getElementById('cEmail').value = '';
@@ -564,6 +574,9 @@ async function saveClient() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
     closeClientModal();
+    if (isNew) {
+      showToast('✓ Client intake saved');
+    }
     fetchAndRender();
   } catch (err) {
     errorEl.textContent = 'Could not save (' + err.message + ').';
@@ -1438,6 +1451,13 @@ function renderDashboard(data) {
       <div class="card"><div class="label">Active Clients</div><div class="value">${activeClients.length}</div></div>
       <div class="card"><div class="label">Needs Attention</div><div class="value gold">${needsAttention.length}</div></div>
       ${extraCards}
+    </div>
+    <div class="panel" style="margin-bottom:14px;">
+      <div class="panel-head">
+        <h2>📋 Client Intake</h2>
+        <button class="add-btn" onclick="openClientModal(null, true)">+ Start Intake</button>
+      </div>
+      <div class="empty" style="padding:4px 0;">Use this during a call with a new prospect to capture their info straight into Notion.</div>
     </div>
     <div class="row">
       <div class="panel">
