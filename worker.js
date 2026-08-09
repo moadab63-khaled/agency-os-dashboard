@@ -132,7 +132,7 @@ async function handleNotionData(request, env) {
       } catch (e) {
         tasks = [];
       }
-      return json({ tasks });
+      return json({ tasks, raw: text });
     } catch (err) {
       return json({ error: err.message }, 502);
     }
