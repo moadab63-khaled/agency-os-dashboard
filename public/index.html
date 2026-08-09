@@ -88,9 +88,6 @@
     <label>Notion integration token</label>
     <input id="inToken" type="password" placeholder="secret_...">
 
-    <label>OpenAI API key (for Content Repurposer)</label>
-    <input id="inOpenaiKey" type="password" placeholder="sk-... (optional, only needed to use Repurpose)">
-
     <label>Clients database ID</label>
     <input id="inClients" type="text" placeholder="e.g. aed11247939c...">
 
@@ -354,7 +351,6 @@ function openModal() {
   const cfg = loadConfig();
   if (cfg) {
     document.getElementById('inToken').value = cfg.token || '';
-    document.getElementById('inOpenaiKey').value = cfg.openaiKey || '';
     document.getElementById('inClients').value = (cfg.databases && cfg.databases.clients) || '';
     document.getElementById('inFinance').value = (cfg.databases && cfg.databases.finance) || '';
     document.getElementById('inTeam').value = (cfg.databases && cfg.databases.team) || '';
@@ -369,7 +365,6 @@ function closeModal() { document.getElementById('overlay').classList.add('hidden
 function saveAndLoad() {
   const cfg = {
     token: document.getElementById('inToken').value.trim(),
-    openaiKey: document.getElementById('inOpenaiKey').value.trim(),
     databases: {
       clients: document.getElementById('inClients').value.trim(),
       finance: document.getElementById('inFinance').value.trim(),
@@ -1239,11 +1234,6 @@ async function saveContentEntry() {
 }
 
 async function repurposeContent(pageId) {
-  const cfg = loadConfig();
-  if (!cfg || !cfg.openaiKey) {
-    alert('Add your OpenAI API key in Settings first to use the Content Repurposer.');
-    return;
-  }
   const page = lastContentPages[pageId];
   if (!page) return;
   const props = page.properties || {};
@@ -1259,11 +1249,12 @@ async function repurposeContent(pageId) {
     const res = await fetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'repurpose', openaiKey: cfg.openaiKey, title, body })
+      body: JSON.stringify({ action: 'repurpose', title, body })
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) throw new Error(data.error || 'Repurpose failed');
 
+    const cfg = loadConfig();
     const updateRes = await fetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
