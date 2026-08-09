@@ -60,6 +60,11 @@
   .modal .error-text { font-size: 12px; color: #F87171; margin-top: 10px; display: none; }
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #161F38; border: 1px solid #E8C25C; color: #F4E4B8; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 20; opacity: 0; transition: opacity 0.25s ease; pointer-events: none; }
   .toast.show { opacity: 1; }
+
+  .tabs { display: none; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab-btn { background: #161F38; border: 1px solid #23304F; color: #8A93AC; font-size: 12px; font-weight: 700; padding: 9px 14px; border-radius: 10px; cursor: pointer; font-family: 'Tajawal', sans-serif; }
+  .tab-btn.active { background: rgba(232,194,92,0.14); border-color: #E8C25C; color: #E8C25C; }
+  .tab-content.hidden { display: none; }
 </style>
 </head>
 <body>
@@ -76,7 +81,19 @@
     it never displays anyone else's data.
   </div>
 
-  <div id="dashboardArea"></div>
+  <div class="tabs" id="tabsNav">
+    <button class="tab-btn active" onclick="switchTab('overview')">📊 Overview</button>
+    <button class="tab-btn" onclick="switchTab('clients')">👥 Clients</button>
+    <button class="tab-btn" onclick="switchTab('projects')">📁 Projects &amp; Tasks</button>
+    <button class="tab-btn" onclick="switchTab('finance')">💰 Finance &amp; Content</button>
+  </div>
+
+  <div id="dashboardArea">
+    <div class="tab-content" id="tab-overview"></div>
+    <div class="tab-content hidden" id="tab-clients"></div>
+    <div class="tab-content hidden" id="tab-projects"></div>
+    <div class="tab-content hidden" id="tab-finance"></div>
+  </div>
 </div>
 
 <!-- Settings modal (connect Notion) -->
@@ -1331,6 +1348,18 @@ async function repurposeContent(pageId) {
   }
 }
 
+const TAB_NAMES = ['overview', 'clients', 'projects', 'finance'];
+
+function switchTab(name) {
+  TAB_NAMES.forEach(n => {
+    const el = document.getElementById('tab-' + n);
+    if (el) el.classList.toggle('hidden', n !== name);
+  });
+  const buttons = document.querySelectorAll('.tab-btn');
+  const idx = TAB_NAMES.indexOf(name);
+  buttons.forEach((btn, i) => btn.classList.toggle('active', i === idx));
+}
+
 function renderDashboard(data) {
   const clients = (data.clients && data.clients.results) || [];
   const finance = (data.finance && data.finance.results) || [];
@@ -1547,7 +1576,7 @@ function renderDashboard(data) {
     `;
   }
 
-  const html = `
+  const overviewHtml = `
     <div class="grid">
       <div class="card"><div class="label">Revenue (Paid)</div><div class="value green">$${revenue.toLocaleString()}</div></div>
       <div class="card"><div class="label">Overdue Invoices</div><div class="value red">$${overdue.toLocaleString()}</div></div>
@@ -1555,6 +1584,10 @@ function renderDashboard(data) {
       <div class="card"><div class="label">Needs Attention</div><div class="value gold">${needsAttention.length}</div></div>
       ${extraCards}
     </div>
+    <div class="note" style="margin-top:6px;">This is your real data, pulled live from your own Notion workspace just now. Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
+  `;
+
+  const clientsHtml = `
     <div class="panel" style="margin-bottom:14px;">
       <div class="panel-head">
         <h2>📋 Client Intake</h2>
@@ -1581,13 +1614,23 @@ function renderDashboard(data) {
         ${teamRows}
       </div>
     </div>
+  `;
+
+  const projectsHtml = `
     ${projectsPanel}
     ${tasksPanel}
+  `;
+
+  const financeHtml = `
     ${financePanel}
     ${contentPanel}
-    <div class="note" style="margin-top:6px;">This is your real data, pulled live from your own Notion workspace just now. Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
   `;
-  document.getElementById('dashboardArea').innerHTML = html;
+
+  document.getElementById('tab-overview').innerHTML = overviewHtml;
+  document.getElementById('tab-clients').innerHTML = clientsHtml;
+  document.getElementById('tab-projects').innerHTML = projectsHtml;
+  document.getElementById('tab-finance').innerHTML = financeHtml;
+  document.getElementById('tabsNav').style.display = 'flex';
 }
 
 async function fetchAndRender() {
@@ -1599,7 +1642,8 @@ async function fetchAndRender() {
     badge.textContent = 'Not connected';
     badge.className = 'badge off';
     note.textContent = 'Connect your own Notion databases below to see your real numbers here. Until then, this shows nothing — it never displays anyone else\'s data.';
-    document.getElementById('dashboardArea').innerHTML = '';
+    TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
+    document.getElementById('tabsNav').style.display = 'none';
     return;
   }
 
@@ -1623,7 +1667,8 @@ async function fetchAndRender() {
     badge.textContent = 'Connection error';
     badge.className = 'badge off';
     note.textContent = 'Could not load your data (' + err.message + '). Check your token and database IDs in Settings.';
-    document.getElementById('dashboardArea').innerHTML = '';
+    TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
+    document.getElementById('tabsNav').style.display = 'none';
   }
 }
 
