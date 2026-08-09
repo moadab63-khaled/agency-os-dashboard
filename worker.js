@@ -144,11 +144,55 @@ async function handleNotionData(request) {
     }
   }
 
-  const { databases } = payload;
-
-  if (!databases) {
-    return json({ error: "Missing databases" }, 400);
+  if (action === "repurpose") {
+  const { openaiKey, title, body } = payload;
+  if (!openaiKey) {
+    return json({ error: "Missing OpenAI API key" }, 400);
   }
+  if (!body && !title) {
+    return json({ error: "Missing content to repurpose" }, 400);
+  }
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a social media content repurposer for a marketing agency. Given a piece of long-form content (title and body), produce 3 short repurposed pieces: (1) a LinkedIn post (3-5 sentences, professional tone), (2) a Twitter/X thread opener plus 2 follow-up tweets, (3) a one-line Instagram caption with 3 relevant hashtags. Format clearly with headers for each platform. Keep the total output concise and ready to copy-paste.",
+          },
+          {
+            role: "user",
+            content: `Title: ${title || "(untitled)"}\n\nBody:\n${body || "(no body provided)"}`,
+          },
+        ],
+        max_tokens: 600,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error((data.error && data.error.message) || `OpenAI API error (${res.status})`);
+    }
+    const text = data.choices && data.choices[0] && data.choices[0].message
+      ? data.choices[0].message.content
+      : "";
+    return json({ result: text });
+  } catch (err) {
+    return json({ error: err.message }, 502);
+  }
+}
+
+const { databases } = payload;
+
+if (!databases) {
+  return json({ error: "Missing databases" }, 400);
+}
 
   async function queryDataSource(dataSourceId) {
     const res = await fetch(
