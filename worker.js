@@ -75,6 +75,33 @@ async function handleNotionData(request, env) {
     }
   }
 
+  if (action === "financial-insights") {
+    const { stats } = payload;
+    if (!stats) {
+      return json({ error: "Missing stats" }, 400);
+    }
+    try {
+      const aiResult = await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a financial analyst for a small creative/marketing agency. Given summary stats from their Finance database (paid revenue, pending amount, overdue amount, expense total, counts, net cash flow), write a short weekly financial insights summary in plain text (no markdown headers): 1) one headline sentence on overall financial health, 2) 2-3 short bullet-style observations (e.g. cash flow risk from overdue invoices, expense trends, pending backlog), 3) one concrete recommended next action. Keep the whole thing under 150 words.",
+          },
+          {
+            role: "user",
+            content: `Finance summary:\n${JSON.stringify(stats, null, 2)}`,
+          },
+        ],
+        max_tokens: 400,
+      });
+      const text = aiResult.response || "";
+      return json({ result: text });
+    } catch (err) {
+      return json({ error: err.message }, 502);
+    }
+  }
+
   if (!token) {
     return json({ error: "Missing token" }, 400);
   }
