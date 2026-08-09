@@ -88,6 +88,9 @@
     <label>Notion integration token</label>
     <input id="inToken" type="password" placeholder="secret_...">
 
+    <label>OpenAI API key (for Content Repurposer)</label>
+    <input id="inOpenaiKey" type="password" placeholder="sk-... (optional, only needed to use Repurpose)">
+
     <label>Clients database ID</label>
     <input id="inClients" type="text" placeholder="e.g. aed11247939c...">
 
@@ -351,6 +354,7 @@ function openModal() {
   const cfg = loadConfig();
   if (cfg) {
     document.getElementById('inToken').value = cfg.token || '';
+    document.getElementById('inOpenaiKey').value = cfg.openaiKey || '';
     document.getElementById('inClients').value = (cfg.databases && cfg.databases.clients) || '';
     document.getElementById('inFinance').value = (cfg.databases && cfg.databases.finance) || '';
     document.getElementById('inTeam').value = (cfg.databases && cfg.databases.team) || '';
@@ -365,6 +369,7 @@ function closeModal() { document.getElementById('overlay').classList.add('hidden
 function saveAndLoad() {
   const cfg = {
     token: document.getElementById('inToken').value.trim(),
+    openaiKey: document.getElementById('inOpenaiKey').value.trim(),
     databases: {
       clients: document.getElementById('inClients').value.trim(),
       finance: document.getElementById('inFinance').value.trim(),
@@ -1233,6 +1238,57 @@ async function saveContentEntry() {
   }
 }
 
+async function repurposeContent(pageId) {
+  const cfg = loadConfig();
+  if (!cfg || !cfg.openaiKey) {
+    alert('Add your OpenAI API key in Settings first to use the Content Repurposer.');
+    return;
+  }
+  const page = lastContentPages[pageId];
+  if (!page) return;
+  const props = page.properties || {};
+  const titleProp = contentTitleProp && props[contentTitleProp] ? props[contentTitleProp] : findProp(props, NAME_NAMES);
+  const title = titleText(titleProp);
+  const body = richText(props['Body']);
+
+  const btn = document.getElementById('repurpose-' + pageId);
+  const originalText = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+
+  try {
+    const res = await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'repurpose', openaiKey: cfg.openaiKey, title, body })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Repurpose failed');
+
+    const updateRes = await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: cfg.token,
+        action: 'update',
+        pageId,
+        properties: {
+          'Repurposed Output': { rich_text: [{ text: { content: data.result.slice(0, 2000) } }] },
+          'Status': { select: { name: 'Ready to Repurpose' } }
+        }
+      })
+    });
+    const updateData = await updateRes.json().catch(() => ({}));
+    if (!updateRes.ok || updateData.error) throw new Error(updateData.error || 'Could not save repurposed content');
+
+    showToast('✓ Content repurposed');
+    fetchAndRender();
+  } catch (err) {
+    alert('Could not repurpose (' + err.message + ').');
+  } finally {
+    if (btn) { btn.textContent = originalText; btn.disabled = false; }
+  }
+}
+
 function renderDashboard(data) {
   const clients = (data.clients && data.clients.results) || [];
   const finance = (data.finance && data.finance.results) || [];
@@ -1427,6 +1483,7 @@ function renderDashboard(data) {
         <span class="line-left"><span class="dot ${contentStatusDot(status)}"></span><span>${esc(name)}</span></span>
         <span style="display:flex;align-items:center;gap:8px;">
           <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
+          <button class="edit-btn" id="repurpose-${c.id}" onclick="repurposeContent('${c.id}')" title="Repurpose with AI">✨</button>
           <button class="edit-btn" onclick="openContentModal('${c.id}')" title="Edit content">✎</button>
           <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete content">🗑</button>
         </span>
