@@ -126,13 +126,28 @@ async function handleNotionData(request, env) {
       let tasks = [];
       try {
         const match = text.match(/\[[\s\S]*\]/);
-        tasks = JSON.parse(match ? match[0] : text);
-        if (!Array.isArray(tasks)) tasks = [];
-        tasks = tasks.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim());
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          if (Array.isArray(parsed)) tasks = parsed;
+        }
       } catch (e) {
         tasks = [];
       }
-      return json({ tasks, raw: text });
+      if (!tasks.length) {
+        // Fallback: model didn't return a JSON array — treat each non-empty
+        // line of plain text as one task, stripping bullets/numbering/quotes.
+        tasks = text
+          .split(/\r?\n/)
+          .map((line) =>
+            line
+              .replace(/^[\-\*\u2022\d]+[\.\)]?\s*/, "")
+              .replace(/^["']|["']$/g, "")
+              .trim()
+          )
+          .filter((line) => line.length > 0 && line.length <= 200);
+      }
+      tasks = tasks.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim());
+      return json({ tasks });
     } catch (err) {
       return json({ error: err.message }, 502);
     }
