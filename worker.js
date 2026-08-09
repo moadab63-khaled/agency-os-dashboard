@@ -102,6 +102,42 @@ async function handleNotionData(request, env) {
     }
   }
 
+  if (action === "meeting-to-action") {
+    const { notes } = payload;
+    if (!notes) {
+      return json({ error: "Missing meeting notes" }, 400);
+    }
+    try {
+      const aiResult = await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
+        messages: [
+          {
+            role: "system",
+            content:
+              "You extract action items from meeting notes for a marketing agency. Given raw meeting notes, return ONLY a JSON array of short, clear task titles (max 10 words each), one per actionable item mentioned. No explanations, no markdown formatting, no numbering, no preamble — output must be nothing but a raw JSON array of strings, e.g. [\"Send proposal to client\", \"Update project timeline\"]. If no clear action items exist, return an empty array [].",
+          },
+          {
+            role: "user",
+            content: notes,
+          },
+        ],
+        max_tokens: 500,
+      });
+      const text = aiResult.response || "";
+      let tasks = [];
+      try {
+        const match = text.match(/\[[\s\S]*\]/);
+        tasks = JSON.parse(match ? match[0] : text);
+        if (!Array.isArray(tasks)) tasks = [];
+        tasks = tasks.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim());
+      } catch (e) {
+        tasks = [];
+      }
+      return json({ tasks });
+    } catch (err) {
+      return json({ error: err.message }, 502);
+    }
+  }
+
   if (!token) {
     return json({ error: "Missing token" }, 400);
   }
