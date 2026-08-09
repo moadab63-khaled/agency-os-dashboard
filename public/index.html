@@ -1301,6 +1301,76 @@ async function generateFinancialInsights() {
   }
 }
 
+async function extractMeetingTasks() {
+  const cfg = loadConfig();
+  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.tasks) {
+    alert('Connect your Notion Tasks database in Settings first.');
+    return;
+  }
+  const notesEl = document.getElementById('meetingNotes');
+  const notes = notesEl.value.trim();
+  if (!notes) {
+    showToast('Paste some meeting notes first.');
+    return;
+  }
+  const btn = document.getElementById('meetingBtn');
+  const resultBox = document.getElementById('meetingResultBox');
+  const originalText = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = 'Extracting…'; btn.disabled = true; }
+  resultBox.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'meeting-to-action', notes })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Could not extract tasks');
+    const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+
+    if (!tasks.length) {
+      resultBox.textContent = 'No clear action items found in these notes.';
+      resultBox.style.display = 'block';
+      return;
+    }
+
+    let createdCount = 0;
+    const createdNames = [];
+    for (const taskName of tasks) {
+      const candidate = pickAutoAssignee();
+      const titleKey = taskTitleProp || 'Name';
+      const properties = {
+        [titleKey]: { title: [{ text: { content: taskName } }] },
+        'Status': { status: { name: 'Not started' } }
+      };
+      if (candidate) {
+        properties['Assigned To'] = { relation: [{ id: candidate.id }] };
+      }
+      const createRes = await fetch('/api/notion-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: cfg.token, action: 'create', databaseId: cfg.databases.tasks, properties })
+      });
+      const createData = await createRes.json().catch(() => ({}));
+      if (createRes.ok && !createData.error) {
+        createdCount++;
+        createdNames.push(taskName);
+      }
+    }
+
+    resultBox.innerHTML = `Created ${createdCount} task${createdCount === 1 ? '' : 's'}:<br>` + createdNames.map(n => '• ' + esc(n)).join('<br>');
+    resultBox.style.display = 'block';
+    notesEl.value = '';
+    showToast(`✓ ${createdCount} task${createdCount === 1 ? '' : 's'} created from meeting notes`);
+    fetchAndRender();
+  } catch (err) {
+    alert('Could not extract tasks (' + err.message + ').');
+  } finally {
+    if (btn) { btn.textContent = originalText; btn.disabled = false; }
+  }
+}
+
 async function repurposeContent(pageId) {
   const page = lastContentPages[pageId];
   if (!page) return;
@@ -1616,9 +1686,24 @@ function renderDashboard(data) {
     </div>
   `;
 
+  const meetingPanel = `
+    <div class="panel" style="margin-top:14px;">
+      <div class="panel-head">
+        <h2>🎯 Meeting-to-Action</h2>
+      </div>
+      <p style="font-size:12px;color:#8A93AC;margin-bottom:10px;line-height:1.5;">Paste your raw meeting notes below. AI pulls out the action items and creates them as Tasks in Notion automatically, auto-assigned to whoever has the lowest current workload.</p>
+      <textarea id="meetingNotes" placeholder="Paste meeting notes here..." style="width:100%;min-height:120px;background:#0F1729;border:1px solid #23304F;border-radius:8px;padding:9px 10px;color:#E8ECF4;font-size:13px;font-family:'Tajawal',sans-serif;resize:vertical;"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+        <button class="add-btn" onclick="extractMeetingTasks()" id="meetingBtn">🎯 Extract Tasks</button>
+      </div>
+      <div id="meetingResultBox" style="display:none; margin-top:10px; padding:10px; background:#0F1729; border:1px solid #23304F; border-radius:8px; font-size:12px; line-height:1.6; color:#C7CEDE;"></div>
+    </div>
+  `;
+
   const projectsHtml = `
     ${projectsPanel}
     ${tasksPanel}
+    ${meetingPanel}
   `;
 
   const financeHtml = `
