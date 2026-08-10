@@ -18,6 +18,23 @@ function isMultiDataSourceError(errText) {
   return typeof errText === "string" && errText.includes("multiple_data_sources_for_database");
 }
 
+// Workers AI does not always return a plain string in .response — it can
+// come back as an object, a nested { response: "..." }, or an array,
+// depending on the model. This normalizes any shape into a safe string
+// before any .match()/.split()/.slice() is ever called on it.
+function coerceAiText(raw) {
+  if (typeof raw === "string") return raw;
+  if (raw == null) return "";
+  if (typeof raw === "object") {
+    if (typeof raw.response === "string") return raw.response;
+    if (Array.isArray(raw)) {
+      return raw.map((item) => (typeof item === "string" ? item : JSON.stringify(item))).join("\n");
+    }
+    return JSON.stringify(raw);
+  }
+  return String(raw);
+}
+
 async function getDataSourceIds(databaseId, token) {
   const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
     method: "GET",
@@ -68,7 +85,7 @@ async function handleNotionData(request, env) {
         ],
         max_tokens: 600,
       });
-      const text = aiResult.response || "";
+      const text = coerceAiText(aiResult.response);
       return json({ result: text });
     } catch (err) {
       return json({ error: err.message }, 502);
@@ -95,7 +112,7 @@ async function handleNotionData(request, env) {
         ],
         max_tokens: 400,
       });
-      const text = aiResult.response || "";
+      const text = coerceAiText(aiResult.response);
       return json({ result: text });
     } catch (err) {
       return json({ error: err.message }, 502);
@@ -123,28 +140,7 @@ async function handleNotionData(request, env) {
         max_tokens: 500,
       });
 
-      // aiResult.response is not guaranteed to be a string — Workers AI can
-      // return an object/array shape depending on the model. Coerce safely
-      // before doing any string operations on it.
-      let raw = aiResult.response;
-      let text;
-      if (typeof raw === "string") {
-        text = raw;
-      } else if (raw == null) {
-        text = "";
-      } else if (typeof raw === "object") {
-        // Some responses come back as { response: "..." } nested again,
-        // or as an array of strings/objects. Try the common shapes first.
-        if (typeof raw.response === "string") {
-          text = raw.response;
-        } else if (Array.isArray(raw)) {
-          text = raw.map((item) => (typeof item === "string" ? item : JSON.stringify(item))).join("\n");
-        } else {
-          text = JSON.stringify(raw);
-        }
-      } else {
-        text = String(raw);
-      }
+      const text = coerceAiText(aiResult.response);
 
       let tasks = [];
       try {
@@ -157,8 +153,6 @@ async function handleNotionData(request, env) {
         tasks = [];
       }
       if (!tasks.length) {
-        // Fallback: model didn't return a JSON array — treat each non-empty
-        // line of plain text as one task, stripping bullets/numbering/quotes.
         tasks = text
           .split(/\r?\n/)
           .map((line) =>
@@ -278,48 +272,77 @@ async function handleNotionData(request, env) {
     return json({ error: "Missing databases" }, 400);
   }
 
+  // Pagination safety cap: up to 10 pages of 100 records = 1000 records per
+  // database per request. Comfortably covers any real agency's data while
+  // keeping the Worker's execution time bounded.
+  const MAX_PAGES = 10;
+  const PAGE_SIZE = 100;
+
   async function queryDataSource(dataSourceId) {
-    const res = await fetch(
-      `https://api.notion.com/v1/data_sources/${dataSourceId}/query`,
-      {
-        method: "POST",
-        headers: notionHeadersDataSources,
-        body: JSON.stringify({ page_size: 50 }),
+    let results = [];
+    let cursor = undefined;
+    let page = 0;
+    do {
+      const res = await fetch(
+        `https://api.notion.com/v1/data_sources/${dataSourceId}/query`,
+        {
+          method: "POST",
+          headers: notionHeadersDataSources,
+          body: JSON.stringify({
+            page_size: PAGE_SIZE,
+            ...(cursor ? { start_cursor: cursor } : {}),
+          }),
+        }
+      );
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Notion API error (${res.status}): ${errText}`);
       }
-    );
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Notion API error (${res.status}): ${errText}`);
-    }
-    return res.json();
+      const data = await res.json();
+      results = results.concat(data.results || []);
+      cursor = data.has_more ? data.next_cursor : null;
+      page++;
+    } while (cursor && page < MAX_PAGES);
+    return { results };
   }
 
   async function queryDatabase(databaseId) {
     if (!databaseId) return { results: [] };
 
-    const res = await fetch(
-      `https://api.notion.com/v1/databases/${databaseId}/query`,
-      {
-        method: "POST",
-        headers: notionHeaders,
-        body: JSON.stringify({ page_size: 50 }),
+    let results = [];
+    let cursor = undefined;
+    let page = 0;
+
+    do {
+      const res = await fetch(
+        `https://api.notion.com/v1/databases/${databaseId}/query`,
+        {
+          method: "POST",
+          headers: notionHeaders,
+          body: JSON.stringify({
+            page_size: PAGE_SIZE,
+            ...(cursor ? { start_cursor: cursor } : {}),
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        if (page === 0 && isMultiDataSourceError(errText)) {
+          const dataSourceIds = await getDataSourceIds(databaseId, token);
+          const perSource = await Promise.all(dataSourceIds.map(queryDataSource));
+          return { results: perSource.flatMap((r) => r.results || []) };
+        }
+        throw new Error(`Notion API error (${res.status}): ${errText}`);
       }
-    );
 
-    if (res.ok) {
-      return res.json();
-    }
+      const data = await res.json();
+      results = results.concat(data.results || []);
+      cursor = data.has_more ? data.next_cursor : null;
+      page++;
+    } while (cursor && page < MAX_PAGES);
 
-    const errText = await res.text();
-
-    if (!isMultiDataSourceError(errText)) {
-      throw new Error(`Notion API error (${res.status}): ${errText}`);
-    }
-
-    const dataSourceIds = await getDataSourceIds(databaseId, token);
-    const perSource = await Promise.all(dataSourceIds.map(queryDataSource));
-    const combinedResults = perSource.flatMap((r) => r.results || []);
-    return { results: combinedResults };
+    return { results };
   }
 
   try {
