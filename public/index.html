@@ -127,7 +127,7 @@
 
     <div class="actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" onclick="saveAndLoad()">Save & Connect</button>
+      <button class="btn-save" onclick="saveAndLoad()">Save &amp; Connect</button>
     </div>
     <span class="helplink">Where to find these: see the "Connect Your Live Dashboard" guide included with your purchase.</span>
   </div>
@@ -567,6 +567,7 @@ async function saveClient() {
   const pageId = document.getElementById('clientPageId').value;
   const isNew = !pageId;
   const name = document.getElementById('cName').value.trim();
+  const email = document.getElementById('cEmail').value.trim();
   const errorEl = document.getElementById('clientError');
   errorEl.style.display = 'none';
 
@@ -574,6 +575,20 @@ async function saveClient() {
     errorEl.textContent = 'Name is required.';
     errorEl.style.display = 'block';
     return;
+  }
+
+  if (email) {
+    const target = email.toLowerCase();
+    for (const id in lastClientPages) {
+      if (id === pageId) continue;
+      const existingProps = lastClientPages[id].properties || {};
+      const existingEmail = ((existingProps['Email'] && existingProps['Email'].email) || '').trim().toLowerCase();
+      if (existingEmail && existingEmail === target) {
+        errorEl.textContent = 'A client with this email already exists.';
+        errorEl.style.display = 'block';
+        return;
+      }
+    }
   }
 
   const properties = buildClientProperties({ isNew });
@@ -1774,7 +1789,15 @@ async function fetchAndRender() {
     if (!res.ok) throw new Error('Request failed: ' + res.status);
     badge.textContent = 'Connected — live';
     badge.className = 'badge';
-    note.textContent = 'Showing your real, current data from your own Notion workspace.';
+
+    const dbLabels = { clients: 'Clients', finance: 'Finance', team: 'Team', projects: 'Projects', tasks: 'Tasks', content: 'Content Calendar' };
+    const failedDbs = Object.keys(dbLabels).filter(k => data[k] && data[k].error).map(k => dbLabels[k]);
+
+    if (failedDbs.length) {
+      note.textContent = `Showing your live data — but ${failedDbs.join(', ')} could not be loaded right now (temporary Notion error). Everything else is up to date; try reconnecting in a moment for the rest.`;
+    } else {
+      note.textContent = 'Showing your real, current data from your own Notion workspace.';
+    }
     renderDashboard(data);
   } catch (err) {
     badge.textContent = 'Connection error';
