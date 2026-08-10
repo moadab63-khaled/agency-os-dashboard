@@ -486,6 +486,8 @@ function detectTitleProp(pages) {
 
 let lastClientPages = {};
 
+let isIntakeFlow = false;
+
 function openClientModal(pageId, isIntake) {
   const cfg = loadConfig();
   if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients) {
@@ -493,6 +495,7 @@ function openClientModal(pageId, isIntake) {
     return;
   }
 
+  isIntakeFlow = !!isIntake && !pageId;
   document.getElementById('clientError').style.display = 'none';
   document.getElementById('clientPageId').value = pageId || '';
 
@@ -592,7 +595,7 @@ async function saveClient() {
     if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
     closeClientModal();
     if (isNew) {
-      showToast('✓ Client intake saved');
+      showToast(isIntakeFlow ? '✓ Client intake saved' : '✓ Client added');
     }
     fetchAndRender();
   } catch (err) {
@@ -789,19 +792,41 @@ async function saveProject() {
 let lastTaskPages = {};
 let taskTitleProp = null;
 
+let workloadOverrides = {};
+
 function pickAutoAssignee() {
   const members = Object.keys(lastTeamPages).map(id => {
     const props = lastTeamPages[id].properties || {};
     const titleProp = teamTitleProp && props[teamTitleProp] ? props[teamTitleProp] : findProp(props, NAME_NAMES);
+    const baseWorkload = numberVal(props['Current Workload']);
     return {
       id,
       name: titleText(titleProp) || 'Unnamed',
-      workload: numberVal(props['Current Workload'])
+      workload: baseWorkload + (workloadOverrides[id] || 0)
     };
   });
   if (!members.length) return null;
   members.sort((a, b) => a.workload - b.workload);
   return members[0];
+}
+
+async function markTaskAssigned(cfg, candidate) {
+  workloadOverrides[candidate.id] = (workloadOverrides[candidate.id] || 0) + 1;
+  try {
+    await fetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: cfg.token,
+        action: 'update',
+        pageId: candidate.id,
+        properties: { 'Current Workload': { number: candidate.workload + 1 } }
+      })
+    });
+  } catch (e) {
+    // Non-fatal: the local override still keeps this session's picks
+    // balanced even if this background Notion write fails.
+  }
 }
 
 function showToast(message) {
@@ -915,6 +940,7 @@ async function saveTask() {
     closeTaskModal();
     if (isNew && autoAssignCandidate) {
       showToast(`✓ Task assigned to ${autoAssignCandidate.name}`);
+      await markTaskAssigned(cfg, autoAssignCandidate);
     }
     fetchAndRender();
   } catch (err) {
@@ -1356,6 +1382,7 @@ async function extractMeetingTasks() {
       if (createRes.ok && !createData.error) {
         createdCount++;
         createdNames.push(taskName);
+        if (candidate) await markTaskAssigned(cfg, candidate);
       }
     }
 
@@ -1454,6 +1481,7 @@ function renderDashboard(data) {
   lastTeamPages = {};
   team.forEach(t => { lastTeamPages[t.id] = t; });
   teamTitleProp = detectTitleProp(lastTeamPages);
+  workloadOverrides = {};
 
   const getProp = (page, name) => (page.properties || {})[name];
 
