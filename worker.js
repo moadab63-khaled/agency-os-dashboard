@@ -122,7 +122,30 @@ async function handleNotionData(request, env) {
         ],
         max_tokens: 500,
       });
-      const text = aiResult.response || "";
+
+      // aiResult.response is not guaranteed to be a string — Workers AI can
+      // return an object/array shape depending on the model. Coerce safely
+      // before doing any string operations on it.
+      let raw = aiResult.response;
+      let text;
+      if (typeof raw === "string") {
+        text = raw;
+      } else if (raw == null) {
+        text = "";
+      } else if (typeof raw === "object") {
+        // Some responses come back as { response: "..." } nested again,
+        // or as an array of strings/objects. Try the common shapes first.
+        if (typeof raw.response === "string") {
+          text = raw.response;
+        } else if (Array.isArray(raw)) {
+          text = raw.map((item) => (typeof item === "string" ? item : JSON.stringify(item))).join("\n");
+        } else {
+          text = JSON.stringify(raw);
+        }
+      } else {
+        text = String(raw);
+      }
+
       let tasks = [];
       try {
         const match = text.match(/\[[\s\S]*\]/);
