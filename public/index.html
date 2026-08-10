@@ -1568,7 +1568,44 @@ function renderDashboard(data) {
     return !isDoneLike(status);
   }).length;
 
+  function daysOverdue(due) {
+    const ms = new Date(now).setHours(0,0,0,0) - new Date(due).setHours(0,0,0,0);
+    return Math.floor(ms / (24 * 60 * 60 * 1000));
+  }
+
+  const overdueProjectsList = projects.filter(p => {
+    const status = selectName(findProp(p.properties, STATUS_NAMES));
+    if (isDoneLike(status)) return false;
+    const due = dateVal(findProp(p.properties, DUE_DATE_NAMES));
+    return due && due < now;
+  }).map(p => ({
+    id: p.id,
+    kind: 'project',
+    name: titleText(findProp(p.properties, NAME_NAMES)) || 'Unnamed project',
+    days: daysOverdue(dateStr(findProp(p.properties, DUE_DATE_NAMES)))
+  }));
+
+  const overdueTasksList = tasks.filter(t => {
+    const status = anyStatusName(findProp(t.properties, STATUS_NAMES));
+    if (isDoneLike(status)) return false;
+    const due = dateVal(findProp(t.properties, DUE_DATE_NAMES));
+    return due && due < now;
+  }).map(t => {
+    const titleProp = taskTitleProp && t.properties[taskTitleProp] ? t.properties[taskTitleProp] : findProp(t.properties, NAME_NAMES);
+    return {
+      id: t.id,
+      kind: 'task',
+      name: titleText(titleProp) || 'Unnamed task',
+      days: daysOverdue(dateStr(findProp(t.properties, DUE_DATE_NAMES)))
+    };
+  });
+
+  const overdueItems = overdueProjectsList.concat(overdueTasksList).sort((a, b) => b.days - a.days);
+
   let extraCards = '';
+  if (hasProjects || hasTasks) {
+    extraCards += `<div class="card"><div class="label">Overdue</div><div class="value red">${overdueItems.length}</div></div>`;
+  }
   if (hasProjects) {
     extraCards += `<div class="card"><div class="label">Active Projects</div><div class="value">${activeProjectsCount}</div></div>`;
   }
@@ -1577,6 +1614,31 @@ function renderDashboard(data) {
   }
   if (hasContent) {
     extraCards += `<div class="card"><div class="label">Content in Pipeline</div><div class="value">${contentInPipeline}</div></div>`;
+  }
+
+  let deadlinesPanel = '';
+  if (hasProjects || hasTasks) {
+    const deadlineRows = overdueItems.slice(0, 8).map(item => {
+      const icon = item.kind === 'project' ? '📁' : '✅';
+      const openFn = item.kind === 'project' ? 'openProjectModal' : 'openTaskModal';
+      const editTitle = item.kind === 'project' ? 'Edit project' : 'Edit task';
+      return `<div class="line">
+        <span class="line-left"><span class="dot red"></span><span>${icon} ${esc(item.name)}</span></span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#F87171;font-size:12px;">${item.days} day${item.days === 1 ? '' : 's'} overdue</span>
+          <button class="edit-btn" onclick="${openFn}('${item.id}')" title="${editTitle}">✎</button>
+        </span>
+      </div>`;
+    }).join('') || '<div class="empty">Nothing overdue — you\'re all caught up. 🎉</div>';
+
+    deadlinesPanel = `
+      <div class="panel">
+        <div class="panel-head">
+          <h2>⏰ Deadlines</h2>
+        </div>
+        ${deadlineRows}
+      </div>
+    `;
   }
 
   let projectsPanel = '';
@@ -1744,6 +1806,7 @@ function renderDashboard(data) {
   `;
 
   const projectsHtml = `
+    ${deadlinesPanel}
     ${projectsPanel}
     ${tasksPanel}
     ${meetingPanel}
