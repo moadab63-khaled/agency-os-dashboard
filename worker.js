@@ -18,6 +18,22 @@ function isMultiDataSourceError(errText) {
   return typeof errText === "string" && errText.includes("multiple_data_sources_for_database");
 }
 
+// Notion's API enforces an average of 3 requests/second per integration and
+// returns HTTP 429 with a Retry-After header when exceeded (per Notion's
+// official rate-limit docs). This retries once, waiting the amount of time
+// Notion asks for (capped at 5s as a safety bound) before giving up.
+async function fetchWithRetry(url, options, maxRetries = 1) {
+  let attempt = 0;
+  while (true) {
+    const res = await fetch(url, options);
+    if (res.status !== 429 || attempt >= maxRetries) return res;
+    const retryAfterHeader = res.headers.get("Retry-After");
+    const waitSec = Math.min(parseInt(retryAfterHeader, 10) || 1, 5);
+    await new Promise((resolve) => setTimeout(resolve, waitSec * 1000));
+    attempt++;
+  }
+}
+
 // Workers AI does not always return a plain string in .response — it can
 // come back as an object, a nested { response: "..." }, or an array,
 // depending on the model. This normalizes any shape into a safe string
@@ -36,7 +52,7 @@ function coerceAiText(raw) {
 }
 
 async function getDataSourceIds(databaseId, token) {
-  const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
+  const res = await fetchWithRetry(`https://api.notion.com/v1/databases/${databaseId}`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -161,7 +177,7 @@ async function handleNotionData(request, env) {
               .replace(/^["']|["']$/g, "")
               .trim()
           )
-          .filter((line) => line.length > 0 && line.length <= 200);
+          .filter((line) => line.length >= 3 && line.length <= 200 && /[\p{L}\p{N}]/u.test(line));
       }
       tasks = tasks.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim());
       return json({ tasks });
@@ -192,7 +208,7 @@ async function handleNotionData(request, env) {
       return json({ error: "Missing databaseId or properties" }, 400);
     }
     try {
-      let res = await fetch("https://api.notion.com/v1/pages", {
+      let res = await fetchWithRetry("https://api.notion.com/v1/pages", {
         method: "POST",
         headers: notionHeaders,
         body: JSON.stringify({
@@ -204,7 +220,7 @@ async function handleNotionData(request, env) {
 
       if (!res.ok && isMultiDataSourceError(JSON.stringify(data))) {
         const dataSourceIds = await getDataSourceIds(databaseId, token);
-        res = await fetch("https://api.notion.com/v1/pages", {
+        res = await fetchWithRetry("https://api.notion.com/v1/pages", {
           method: "POST",
           headers: notionHeadersDataSources,
           body: JSON.stringify({
@@ -230,7 +246,7 @@ async function handleNotionData(request, env) {
       return json({ error: "Missing pageId or properties" }, 400);
     }
     try {
-      const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+      const res = await fetchWithRetry(`https://api.notion.com/v1/pages/${pageId}`, {
         method: "PATCH",
         headers: notionHeaders,
         body: JSON.stringify({ properties }),
@@ -251,7 +267,7 @@ async function handleNotionData(request, env) {
       return json({ error: "Missing pageId" }, 400);
     }
     try {
-      const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+      const res = await fetchWithRetry(`https://api.notion.com/v1/pages/${pageId}`, {
         method: "PATCH",
         headers: notionHeaders,
         body: JSON.stringify({ archived: true }),
@@ -283,7 +299,7 @@ async function handleNotionData(request, env) {
     let cursor = undefined;
     let page = 0;
     do {
-      const res = await fetch(
+      const res = await fetchWithRetry(
         `https://api.notion.com/v1/data_sources/${dataSourceId}/query`,
         {
           method: "POST",
@@ -314,7 +330,7 @@ async function handleNotionData(request, env) {
     let page = 0;
 
     do {
-      const res = await fetch(
+      const res = await fetchWithRetry(
         `https://api.notion.com/v1/databases/${databaseId}/query`,
         {
           method: "POST",
@@ -345,23 +361,25 @@ async function handleNotionData(request, env) {
     return { results };
   }
 
-  try {
-    const entries = Object.entries(databases).filter(([, id]) => !!id);
-    const results = {};
-    for (const [key, id] of entries) {
+  const entries = Object.entries(databases).filter(([, id]) => !!id);
+  const results = {};
+  for (const [key, id] of entries) {
+    try {
       results[key] = await queryDatabase(id);
+    } catch (err) {
+      // A failure in one database (rate limit, bad ID, transient API error)
+      // must not wipe out data already fetched successfully from the others.
+      results[key] = { results: [], error: err.message };
     }
-    return json(results);
-  } catch (err) {
-    return json({ error: err.message }, 502);
   }
+  return json(results);
 }
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-if (url.pathname === "/api/notion-data") {
+    if (url.pathname === "/api/notion-data") {
       if (request.method === "OPTIONS") {
         return new Response("", { status: 200, headers: CORS });
       }
