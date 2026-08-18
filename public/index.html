@@ -13,15 +13,22 @@
   .header h1 { font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 24px; color: #F4E4B8; }
   .badge { background: rgba(74,222,128,0.14); border: 1px solid #4ADE80; color: #4ADE80; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; }
   .badge.off { background: rgba(201,162,39,0.14); border-color: #C9A227; color: #E8C25C; }
-  .gear { background: #161F38; border: 1px solid #23304F; color: #C7CEDE; border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+  .gear { background: #161F38; border: 1px solid #23304F; color: #C7CEDE; border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .gear svg { width: 15px; height: 15px; }
 
   .note { font-size: 12px; color: #8A93AC; margin-bottom: 18px; line-height: 1.5; }
 
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px; }
-  .card { background: #161F38; border: 1px solid #23304F; border-radius: 14px; padding: 18px; }
-  .card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8A93AC; margin-bottom: 6px; font-weight: 700; }
-  .card .value { font-family: 'Cairo', sans-serif; font-size: 26px; font-weight: 800; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px; }
+  @media (min-width: 640px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
+  @media (min-width: 980px) { .grid { grid-template-columns: repeat(4, 1fr); gap: 14px; } }
+  .card { background: #161F38; border: 1px solid #23304F; border-top: 2px solid #2A3A5C; border-radius: 12px; padding: 13px 14px; }
+  .card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #8A93AC; margin-bottom: 4px; font-weight: 700; }
+  .card .value { font-family: 'Cairo', sans-serif; font-size: 21px; font-weight: 800; line-height: 1.1; }
   .green { color: #4ADE80; } .red { color: #F87171; } .gold { color: #E8C25C; }
+  .card:has(.value.green) { border-top-color: #4ADE80; }
+  .card:has(.value.red) { border-top-color: #F87171; }
+  .card:has(.value.gold) { border-top-color: #E8C25C; }
+  @media (min-width: 640px) { .card { padding: 16px 18px; } .card .label { font-size: 11px; } .card .value { font-size: 24px; } }
 
   .row { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; margin-bottom: 14px; align-items: start; }
   @media (max-width: 760px) { .row { grid-template-columns: 1fr; } }
@@ -43,28 +50,37 @@
   .del-btn { background: none; border: none; color: #8A93AC; font-size: 13px; cursor: pointer; padding: 2px 6px; flex-shrink: 0; }
   .del-btn:hover { color: #F87171; }
 
-  .overlay { position: fixed; inset: 0; background: rgba(4,7,16,0.75); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; overflow-y: auto; }
-  .overlay.hidden { display: none; }
-  .modal { background: #161F38; border: 1px solid #23304F; border-radius: 16px; padding: 24px; max-width: 440px; width: 100%; margin: 20px 0; }
+  .overlay { position: fixed; inset: 0; background: rgba(4,7,16,0.72); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; overflow-y: auto; opacity: 1; visibility: visible; transition: opacity 0.18s ease; }
+  .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  .modal { background: #161F38; border: 1px solid #23304F; border-top: 3px solid #E8C25C; border-radius: 16px; padding: 26px; max-width: 440px; width: 100%; margin: 20px 0; box-shadow: 0 20px 60px rgba(0,0,0,0.4); transform: translateY(10px) scale(0.98); transition: transform 0.18s ease; position: relative; }
+  .overlay.hidden .modal { transform: translateY(4px) scale(0.98); }
+  .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .modal-close { background: none; border: none; color: #5C647C; font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 4px; margin: -4px -6px 0 0; border-radius: 6px; flex-shrink: 0; }
+  .modal-close:hover { color: #E8ECF4; background: #1E2942; }
   .modal h3 { font-family: 'Cairo', sans-serif; color: #F4E4B8; margin-bottom: 6px; font-size: 17px; }
   .modal p { font-size: 12px; color: #8A93AC; margin-bottom: 16px; line-height: 1.5; }
   .modal label { display: block; font-size: 12px; color: #C7CEDE; margin: 10px 0 4px; }
-  .modal input, .modal select, .modal textarea { width: 100%; background: #0F1729; border: 1px solid #23304F; border-radius: 8px; padding: 9px 10px; color: #E8ECF4; font-size: 13px; font-family: 'Tajawal', sans-serif; }
+  .modal input, .modal select, .modal textarea { width: 100%; background: #0F1729; border: 1px solid #23304F; border-radius: 8px; padding: 9px 10px; color: #E8ECF4; font-size: 13px; font-family: 'Tajawal', sans-serif; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+  .modal input:focus, .modal select:focus, .modal textarea:focus { outline: none; border-color: #E8C25C; box-shadow: 0 0 0 3px rgba(232,194,92,0.15); }
   .modal textarea { resize: vertical; min-height: 70px; }
   .modal .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #E8C25C; font-weight: 700; margin-top: 16px; padding-top: 12px; border-top: 1px solid #23304F; }
   .modal .actions { display: flex; gap: 10px; margin-top: 18px; }
-  .modal button { flex: 1; border: none; border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; }
-  .btn-save { background: #E8C25C; color: #0F1729; }
-  .btn-cancel { background: #23304F; color: #E8ECF4; }
+  .modal button { border: none; border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s ease, opacity 0.15s ease; }
+  .btn-save { flex: 1.4; background: #E8C25C; color: #0F1729; }
+  .btn-save:hover { background: #F0CE72; }
+  .btn-cancel { flex: 1; background: transparent; color: #8A93AC; border: 1px solid #23304F; }
+  .btn-cancel:hover { color: #E8ECF4; border-color: #3A4A6B; }
   .modal .helplink { font-size: 11px; color: #8A93AC; margin-top: 12px; display: block; }
   .modal .error-text { font-size: 12px; color: #F87171; margin-top: 10px; display: none; }
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #161F38; border: 1px solid #E8C25C; color: #F4E4B8; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 20; opacity: 0; transition: opacity 0.25s ease; pointer-events: none; }
   .toast.show { opacity: 1; }
 
-  .tabs { display: none; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-  .tab-btn { background: #161F38; border: 1px solid #23304F; color: #8A93AC; font-size: 12px; font-weight: 700; padding: 9px 14px; border-radius: 10px; cursor: pointer; font-family: 'Tajawal', sans-serif; }
-  .tab-btn.active { background: rgba(232,194,92,0.14); border-color: #E8C25C; color: #E8C25C; }
+  .tabs { display: none; gap: 3px; margin-bottom: 16px; background: #161F38; border: 1px solid #23304F; border-radius: 12px; padding: 3px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab-btn { background: transparent; border: none; color: #8A93AC; font-size: 12px; font-weight: 700; padding: 9px 12px; border-radius: 9px; cursor: pointer; font-family: 'Tajawal', sans-serif; flex: 1 0 auto; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s ease, color 0.15s ease; }
+  .tab-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .tab-btn.active { background: #23304F; color: #F4E4B8; }
   .tab-content.hidden { display: none; }
+  @media (min-width: 640px) { .tab-btn { font-size: 13px; padding: 10px 16px; } }
 </style>
 </head>
 <body>
@@ -73,7 +89,7 @@
     <h1>Agency OS — Live Command Center</h1>
     <div style="display:flex; gap:8px; align-items:center;">
       <span id="statusBadge" class="badge off">Not connected</span>
-      <button class="gear" onclick="openModal()">⚙ Settings</button>
+      <button class="gear" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings</button>
     </div>
   </div>
   <div class="note" id="noteText">
@@ -82,10 +98,10 @@
   </div>
 
   <div class="tabs" id="tabsNav">
-    <button class="tab-btn active" onclick="switchTab('overview')">📊 Overview</button>
-    <button class="tab-btn" onclick="switchTab('clients')">👥 Clients</button>
-    <button class="tab-btn" onclick="switchTab('projects')">📁 Projects &amp; Tasks</button>
-    <button class="tab-btn" onclick="switchTab('finance')">💰 Finance &amp; Content</button>
+    <button class="tab-btn active" onclick="switchTab('overview')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>Overview</button>
+    <button class="tab-btn" onclick="switchTab('clients')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Clients</button>
+    <button class="tab-btn" onclick="switchTab('projects')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Projects &amp; Tasks</button>
+    <button class="tab-btn" onclick="switchTab('finance')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Finance &amp; Content</button>
   </div>
 
   <div id="dashboardArea">
@@ -99,7 +115,10 @@
 <!-- Settings modal (connect Notion) -->
 <div class="overlay hidden" id="overlay">
   <div class="modal">
-    <h3>Connect your Notion data</h3>
+    <div class="modal-head">
+      <h3>Connect your Notion data</h3>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
+    </div>
     <p>Paste your own Notion integration token and database IDs. These are stored only in your browser — never sent anywhere except directly to Notion's API through this page.</p>
 
     <label>Notion integration token</label>
@@ -136,7 +155,10 @@
 <!-- Add / Edit Client modal (also used for Client Intake) -->
 <div class="overlay hidden" id="clientOverlay">
   <div class="modal">
-    <h3 id="clientModalTitle">Add client</h3>
+    <div class="modal-head">
+      <h3 id="clientModalTitle">Add client</h3>
+      <button class="modal-close" onclick="closeClientModal()" aria-label="Close">&times;</button>
+    </div>
     <p id="clientModalDesc">This writes directly to your Notion Clients database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly.</p>
 
     <input type="hidden" id="clientPageId">
@@ -177,7 +199,10 @@
 <!-- Add / Edit Project modal -->
 <div class="overlay hidden" id="projectOverlay">
   <div class="modal">
-    <h3 id="projectModalTitle">Add project</h3>
+    <div class="modal-head">
+      <h3 id="projectModalTitle">Add project</h3>
+      <button class="modal-close" onclick="closeProjectModal()" aria-label="Close">&times;</button>
+    </div>
     <p>This writes directly to your Notion Projects database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly. Client and Tasks links aren't editable here yet — use Notion directly for those.</p>
 
     <input type="hidden" id="projectPageId">
@@ -214,7 +239,10 @@
 <!-- Add / Edit Task modal -->
 <div class="overlay hidden" id="taskOverlay">
   <div class="modal">
-    <h3 id="taskModalTitle">Add task</h3>
+    <div class="modal-head">
+      <h3 id="taskModalTitle">Add task</h3>
+      <button class="modal-close" onclick="closeTaskModal()" aria-label="Close">&times;</button>
+    </div>
     <p>This writes directly to your Notion Tasks database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly. Assignee and Project links aren't editable here yet — use Notion directly for those.</p>
 
     <input type="hidden" id="taskPageId">
@@ -246,7 +274,10 @@
 <!-- Add / Edit Finance modal -->
 <div class="overlay hidden" id="financeOverlay">
   <div class="modal">
-    <h3 id="financeModalTitle">Add finance entry</h3>
+    <div class="modal-head">
+      <h3 id="financeModalTitle">Add finance entry</h3>
+      <button class="modal-close" onclick="closeFinanceModal()" aria-label="Close">&times;</button>
+    </div>
     <p>This writes directly to your Notion Finance database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly. Client link isn't editable here yet — use Notion directly for that.</p>
 
     <input type="hidden" id="financePageId">
@@ -286,7 +317,10 @@
 <!-- Add / Edit Team modal -->
 <div class="overlay hidden" id="teamOverlay">
   <div class="modal">
-    <h3 id="teamModalTitle">Add team member</h3>
+    <div class="modal-head">
+      <h3 id="teamModalTitle">Add team member</h3>
+      <button class="modal-close" onclick="closeTeamModal()" aria-label="Close">&times;</button>
+    </div>
     <p>This writes directly to your Notion Team database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly. Assignee link isn't editable here yet — use Notion directly for that.</p>
 
     <input type="hidden" id="teamPageId">
@@ -321,7 +355,10 @@
 <!-- Add / Edit Content modal -->
 <div class="overlay hidden" id="contentOverlay">
   <div class="modal">
-    <h3 id="contentModalTitle">Add content</h3>
+    <div class="modal-head">
+      <h3 id="contentModalTitle">Add content</h3>
+      <button class="modal-close" onclick="closeContentModal()" aria-label="Close">&times;</button>
+    </div>
     <p>This writes directly to your Notion Content Calendar database. Assumes the standard property names from the Agency OS template — if you renamed any, this may not map correctly.</p>
 
     <input type="hidden" id="contentPageId">
