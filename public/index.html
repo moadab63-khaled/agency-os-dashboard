@@ -7,8 +7,20 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=Tajawal:wght@400;500;700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0F1729; font-family: 'Tajawal', sans-serif; color: #E8ECF4; padding: 24px 18px 60px; }
-  .wrap { max-width: 1080px; margin: 0 auto; }
+  body { background: #0F1729; background-image: radial-gradient(1100px 520px at 12% -10%, rgba(232,194,92,0.05), transparent 60%); font-family: 'Tajawal', sans-serif; color: #E8ECF4; padding: 24px 18px 60px; }
+  .shell { display: block; max-width: 1760px; margin: 0 auto; }
+  .main { min-width: 0; }
+  .wrap { max-width: none; }
+  @media (min-width: 980px) {
+    .shell { display: flex; align-items: flex-start; gap: 28px; }
+    .main { flex: 1; min-width: 0; }
+  }
+  .sidebar-brand { display: none; }
+  @media (min-width: 980px) {
+    .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 4px 12px 18px; margin-bottom: 10px; border-bottom: 1px solid #23304F; }
+    .brand-mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(150deg, #E8C25C, #C9A227); color: #0F1729; font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .brand-text { font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 15px; color: #F4E4B8; letter-spacing: 0.2px; }
+  }
   .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
   .header h1 { font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 24px; color: #F4E4B8; }
   .badge { background: rgba(74,222,128,0.14); border: 1px solid #4ADE80; color: #4ADE80; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; }
@@ -21,14 +33,21 @@
   .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px; }
   @media (min-width: 640px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
   @media (min-width: 980px) { .grid { grid-template-columns: repeat(4, 1fr); gap: 14px; } }
-  .card { background: #161F38; border: 1px solid #23304F; border-top: 2px solid #2A3A5C; border-radius: 12px; padding: 13px 14px; }
-  .card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #8A93AC; margin-bottom: 4px; font-weight: 700; }
-  .card .value { font-family: 'Cairo', sans-serif; font-size: 21px; font-weight: 800; line-height: 1.1; }
+  @media (min-width: 1500px) { .grid { grid-template-columns: repeat(6, 1fr); gap: 16px; } }
+  .card { background: linear-gradient(165deg, #182242 0%, #141C36 100%); border: 1px solid #23304F; border-top: 2px solid #2A3A5C; border-radius: 14px; padding: 14px 15px; position: relative; overflow: hidden; transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(0,0,0,0.28); border-color: #2E3E64; }
+  .card-icon { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; background: rgba(199,206,222,0.08); color: #8A93AC; }
+  .card-icon svg { width: 14px; height: 14px; }
+  .card.green .card-icon { background: rgba(74,222,128,0.12); color: #4ADE80; }
+  .card.red .card-icon { background: rgba(248,113,113,0.12); color: #F87171; }
+  .card.gold .card-icon { background: rgba(232,194,92,0.14); color: #E8C25C; }
+  .card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #8A93AC; margin-bottom: 5px; font-weight: 700; }
+  .card .value { font-family: 'Cairo', sans-serif; font-size: 22px; font-weight: 800; line-height: 1.1; letter-spacing: -0.2px; }
   .green { color: #4ADE80; } .red { color: #F87171; } .gold { color: #E8C25C; }
   .card:has(.value.green) { border-top-color: #4ADE80; }
   .card:has(.value.red) { border-top-color: #F87171; }
   .card:has(.value.gold) { border-top-color: #E8C25C; }
-  @media (min-width: 640px) { .card { padding: 16px 18px; } .card .label { font-size: 11px; } .card .value { font-size: 24px; } }
+  @media (min-width: 640px) { .card { padding: 18px 20px; } .card .label { font-size: 11px; } .card .value { font-size: 26px; } .card-icon { width: 30px; height: 30px; } .card-icon svg { width: 16px; height: 16px; } }
 
   .row { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; margin-bottom: 14px; align-items: start; }
   @media (max-width: 760px) { .row { grid-template-columns: 1fr; } }
@@ -54,6 +73,16 @@
   .edit-btn svg, .del-btn svg { width: 13px; height: 13px; }
   .hi { width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px; flex-shrink: 0; }
   .ri { width: 12px; height: 12px; vertical-align: -1px; margin-right: 4px; flex-shrink: 0; }
+  .avatar { width: 24px; height: 24px; border-radius: 50%; border: 1px solid; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; font-family: 'Cairo', sans-serif; flex-shrink: 0; margin-right: 9px; }
+  .badge-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 9px 3px 7px; border-radius: 999px; white-space: nowrap; }
+  .badge-pill .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .badge-pill.green { background: rgba(74,222,128,0.12); color: #4ADE80; }
+  .badge-pill.yellow { background: rgba(245,192,68,0.12); color: #F5C044; }
+  .badge-pill.red { background: rgba(248,113,113,0.12); color: #F87171; }
+  .badge-pill.neutral { background: rgba(138,147,172,0.12); color: #8A93AC; }
+  .line:hover { background: rgba(255,255,255,0.015); margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 8px; }
+  .panel { transition: border-color 0.18s ease; }
+  .panel:hover { border-color: #2E3E64; }
 
   .overlay { position: fixed; inset: 0; background: rgba(4,7,16,0.72); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; overflow-y: auto; opacity: 1; visibility: visible; transition: opacity 0.18s ease; }
   .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -82,40 +111,53 @@
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #161F38; border: 1px solid #E8C25C; color: #F4E4B8; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 20; opacity: 0; transition: opacity 0.25s ease; pointer-events: none; }
   .toast.show { opacity: 1; }
 
-  .tabs { display: none; gap: 3px; margin-bottom: 16px; background: #161F38; border: 1px solid #23304F; border-radius: 12px; padding: 3px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabs { display: none; flex-direction: row; gap: 3px; margin-bottom: 16px; background: #161F38; border: 1px solid #23304F; border-radius: 12px; padding: 3px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tab-btn { background: transparent; border: none; color: #8A93AC; font-size: 12px; font-weight: 700; padding: 9px 12px; border-radius: 9px; cursor: pointer; font-family: 'Tajawal', sans-serif; flex: 1 0 auto; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s ease, color 0.15s ease; }
   .tab-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
   .tab-btn.active { background: #23304F; color: #F4E4B8; }
   .tab-content.hidden { display: none; }
   @media (min-width: 640px) { .tab-btn { font-size: 13px; padding: 10px 16px; } }
+  @media (min-width: 980px) {
+    .tabs { flex-direction: column; width: 232px; flex-shrink: 0; align-items: stretch; gap: 2px; background: #131B32; border-radius: 16px; padding: 14px 10px; position: sticky; top: 24px; height: fit-content; box-shadow: 0 12px 32px rgba(0,0,0,0.28); }
+    .tab-btn { justify-content: flex-start; padding: 10px 12px; border-radius: 10px; position: relative; font-size: 13.5px; }
+    .tab-btn svg { width: 16px; height: 16px; }
+    .tab-btn.active { background: rgba(232,194,92,0.1); color: #F4E4B8; }
+    .tab-btn.active::before { content: ''; position: absolute; left: -10px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 3px; background: #E8C25C; }
+    .tab-btn:not(.active):hover { background: #1A2340; color: #C7CEDE; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="header">
-    <h1>Agency OS — Live Command Center</h1>
-    <div style="display:flex; gap:8px; align-items:center;">
-      <span id="statusBadge" class="badge off">Not connected</span>
-      <button class="gear" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings</button>
-    </div>
-  </div>
-  <div class="note" id="noteText">
-    Connect your own Notion databases below to see your real numbers here. Until then, this shows nothing —
-    it never displays anyone else's data.
-  </div>
-
+<div class="shell">
   <div class="tabs" id="tabsNav">
+    <div class="sidebar-brand"><span class="brand-mark">A</span><span class="brand-text">Agency OS</span></div>
     <button class="tab-btn active" onclick="switchTab('overview')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>Overview</button>
     <button class="tab-btn" onclick="switchTab('clients')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Clients</button>
     <button class="tab-btn" onclick="switchTab('projects')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Projects &amp; Tasks</button>
     <button class="tab-btn" onclick="switchTab('finance')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Finance &amp; Content</button>
   </div>
 
-  <div id="dashboardArea">
-    <div class="tab-content" id="tab-overview"></div>
-    <div class="tab-content hidden" id="tab-clients"></div>
-    <div class="tab-content hidden" id="tab-projects"></div>
-    <div class="tab-content hidden" id="tab-finance"></div>
+  <div class="main">
+    <div class="wrap">
+      <div class="header">
+        <h1>Agency OS — Live Command Center</h1>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span id="statusBadge" class="badge off">Not connected</span>
+          <button class="gear" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings</button>
+        </div>
+      </div>
+      <div class="note" id="noteText">
+        Connect your own Notion databases below to see your real numbers here. Until then, this shows nothing —
+        it never displays anyone else's data.
+      </div>
+
+      <div id="dashboardArea">
+        <div class="tab-content" id="tab-overview"></div>
+        <div class="tab-content hidden" id="tab-clients"></div>
+        <div class="tab-content hidden" id="tab-projects"></div>
+        <div class="tab-content hidden" id="tab-finance"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -441,6 +483,26 @@ function saveAndLoad() {
 }
 
 function esc(s) { return (s || '').toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+const AVATAR_COLORS = ['#E8C25C', '#5AA9E6', '#4ADE80', '#FF9F5A', '#C98860', '#8B7FD9'];
+function initials(name) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+function avatarColor(name) {
+  let hash = 0;
+  const s = name || '';
+  for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+function avatarHtml(name) {
+  const c = avatarColor(name);
+  return `<span class="avatar" style="background:${c}22;color:${c};border-color:${c}55;">${esc(initials(name))}</span>`;
+}
+function badgePill(text, tone) {
+  return `<span class="badge-pill ${tone}"><span class="badge-dot"></span>${esc(text)}</span>`;
+}
 
 function healthDot(status) {
   if (status === 'Healthy') return 'green';
@@ -1563,9 +1625,9 @@ function renderDashboard(data) {
     const name = titleText(getProp(c, 'Name')) || 'Unnamed client';
     const status = selectName(getProp(c, 'Health Status')) || '—';
     return `<div class="line">
-      <span class="line-left"><span class="dot ${healthDot(status)}"></span><span>${esc(name)}</span></span>
+      <span class="line-left">${avatarHtml(name)}<span>${esc(name)}</span></span>
       <span style="display:flex;align-items:center;gap:8px;">
-        <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
+        ${badgePill(status, healthDot(status))}
         <button class="edit-btn" onclick="openClientModal('${c.id}')" title="Edit client"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
         <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete client"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
       </span>
@@ -1580,7 +1642,7 @@ function renderDashboard(data) {
     const wl = numberVal(getProp(t, 'Current Workload'));
     const pct = Math.round((wl / maxWorkload) * 100);
     return `<div class="line">
-      <span class="line-left"><span>${esc(name)}${role ? ' — ' + esc(role) : ''}</span></span>
+      <span class="line-left">${avatarHtml(name)}<span>${esc(name)}${role ? '<span style="color:#5C647C;"> — ' + esc(role) + '</span>' : ''}</span></span>
       <span style="display:flex;align-items:center;gap:8px;">
         <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>
         <button class="edit-btn" onclick="openTeamModal('${t.id}')" title="Edit team member"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
@@ -1648,16 +1710,16 @@ function renderDashboard(data) {
 
   let extraCards = '';
   if (hasProjects || hasTasks) {
-    extraCards += `<div class="card"><div class="label">Overdue</div><div class="value red">${overdueItems.length}</div></div>`;
+    extraCards += `<div class="card red"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div class="label">Overdue</div><div class="value red">${overdueItems.length}</div></div>`;
   }
   if (hasProjects) {
-    extraCards += `<div class="card"><div class="label">Active Projects</div><div class="value">${activeProjectsCount}</div></div>`;
+    extraCards += `<div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></div><div class="label">Active Projects</div><div class="value">${activeProjectsCount}</div></div>`;
   }
   if (hasTasks) {
-    extraCards += `<div class="card"><div class="label">Tasks Due This Week</div><div class="value gold">${tasksDueThisWeek}</div></div>`;
+    extraCards += `<div class="card gold"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div class="label">Tasks Due This Week</div><div class="value gold">${tasksDueThisWeek}</div></div>`;
   }
   if (hasContent) {
-    extraCards += `<div class="card"><div class="label">Content in Pipeline</div><div class="value">${contentInPipeline}</div></div>`;
+    extraCards += `<div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div><div class="label">Content in Pipeline</div><div class="value">${contentInPipeline}</div></div>`;
   }
 
   let deadlinesPanel = '';
@@ -1691,9 +1753,9 @@ function renderDashboard(data) {
       const name = titleText(findProp(p.properties, NAME_NAMES)) || 'Unnamed project';
       const status = selectName(findProp(p.properties, STATUS_NAMES)) || '—';
       return `<div class="line">
-        <span class="line-left"><span class="dot ${statusDot(status)}"></span><span>${esc(name)}</span></span>
+        <span class="line-left"><span>${esc(name)}</span></span>
         <span style="display:flex;align-items:center;gap:8px;">
-          <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
+          ${badgePill(status, statusDot(status))}
           <button class="edit-btn" onclick="openProjectModal('${p.id}')" title="Edit project"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
           <button class="del-btn" onclick="deleteRecord('${p.id}')" title="Delete project"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
         </span>
@@ -1718,9 +1780,9 @@ function renderDashboard(data) {
       const name = titleText(titleProp) || 'Unnamed task';
       const status = anyStatusName(findProp(t.properties, STATUS_NAMES)) || '—';
       return `<div class="line">
-        <span class="line-left"><span class="dot ${taskStatusDot(status)}"></span><span>${esc(name)}</span></span>
+        <span class="line-left"><span>${esc(name)}</span></span>
         <span style="display:flex;align-items:center;gap:8px;">
-          <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
+          ${badgePill(status, taskStatusDot(status))}
           <button class="edit-btn" onclick="openTaskModal('${t.id}')" title="Edit task"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
           <button class="del-btn" onclick="deleteRecord('${t.id}')" title="Delete task"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
         </span>
@@ -1744,9 +1806,10 @@ function renderDashboard(data) {
     const status = selectName(getProp(f, 'Invoice Status')) || '—';
     const amt = numberVal(getProp(f, 'Amount'));
     return `<div class="line">
-      <span class="line-left"><span class="dot ${financeStatusDot(status)}"></span><span>${esc(name)}</span></span>
+      <span class="line-left"><span>${esc(name)}</span></span>
       <span style="display:flex;align-items:center;gap:8px;">
-        <span style="color:#8A93AC;font-size:12px;">$${amt.toLocaleString()} · ${esc(status)}</span>
+        <span style="color:#C7CEDE;font-size:12.5px;font-weight:700;font-family:'Cairo',sans-serif;">$${amt.toLocaleString()}</span>
+        ${badgePill(status, financeStatusDot(status))}
         <button class="edit-btn" onclick="openFinanceModal('${f.id}')" title="Edit entry"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
         <button class="del-btn" onclick="deleteRecord('${f.id}')" title="Delete entry"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
       </span>
@@ -1774,9 +1837,9 @@ function renderDashboard(data) {
       const name = titleText(titleProp) || 'Unnamed content';
       const status = selectName(getProp(c, 'Status')) || '—';
       return `<div class="line">
-        <span class="line-left"><span class="dot ${contentStatusDot(status)}"></span><span>${esc(name)}</span></span>
+        <span class="line-left"><span>${esc(name)}</span></span>
         <span style="display:flex;align-items:center;gap:8px;">
-          <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
+          ${badgePill(status, contentStatusDot(status))}
           <button class="edit-btn" id="repurpose-${c.id}" onclick="repurposeContent('${c.id}')" title="Repurpose with AI"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6L12 2z"></path></svg></button>
           <button class="edit-btn" onclick="openContentModal('${c.id}')" title="Edit content"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
           <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete content"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
@@ -1797,10 +1860,10 @@ function renderDashboard(data) {
 
   const overviewHtml = `
     <div class="grid">
-      <div class="card"><div class="label">Revenue (Paid)</div><div class="value green">$${revenue.toLocaleString()}</div></div>
-      <div class="card"><div class="label">Overdue Invoices</div><div class="value red">$${overdue.toLocaleString()}</div></div>
-      <div class="card"><div class="label">Active Clients</div><div class="value">${activeClients.length}</div></div>
-      <div class="card"><div class="label">Needs Attention</div><div class="value gold">${needsAttention.length}</div></div>
+      <div class="card green"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div><div class="label">Revenue (Paid)</div><div class="value green">$${revenue.toLocaleString()}</div></div>
+      <div class="card red"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div class="label">Overdue Invoices</div><div class="value red">$${overdue.toLocaleString()}</div></div>
+      <div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div><div class="label">Active Clients</div><div class="value">${activeClients.length}</div></div>
+      <div class="card gold"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div class="label">Needs Attention</div><div class="value gold">${needsAttention.length}</div></div>
       ${extraCards}
     </div>
     <div class="note" style="margin-top:6px;">This is your real data, pulled live from your own Notion workspace just now. Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
