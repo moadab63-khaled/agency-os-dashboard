@@ -35,7 +35,9 @@
   .panel { background: #161F38; border: 1px solid #23304F; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; overflow-y: auto; }
   .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .panel-head h2 { font-family: 'Cairo', sans-serif; font-size: 14px; color: #F4E4B8; margin-bottom: 0; }
-  .add-btn { background: rgba(232,194,92,0.14); border: 1px solid #E8C25C; color: #E8C25C; font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 8px; cursor: pointer; }
+  .add-btn { background: rgba(232,194,92,0.14); border: 1px solid #E8C25C; color: #E8C25C; font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; }
+  .ic { width: 13px; height: 13px; flex-shrink: 0; }
+  .add-btn .ic { margin-right: 5px; }
   .line { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1E2942; font-size: 13px; gap: 8px; }
   .line:last-child { border-bottom: none; }
   .line-left { display: flex; align-items: center; min-width: 0; }
@@ -45,17 +47,22 @@
   .bar-track { width: 80px; height: 6px; background: #1E2942; border-radius: 4px; overflow: hidden; }
   .bar-fill { height: 100%; background: #E8C25C; }
   .empty { color: #5C647C; font-size: 13px; padding: 6px 0; flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
-  .edit-btn { background: none; border: none; color: #8A93AC; font-size: 13px; cursor: pointer; padding: 2px 6px; flex-shrink: 0; }
+  .edit-btn { background: none; border: none; color: #8A93AC; font-size: 13px; cursor: pointer; padding: 2px 6px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease; }
   .edit-btn:hover { color: #E8C25C; }
-  .del-btn { background: none; border: none; color: #8A93AC; font-size: 13px; cursor: pointer; padding: 2px 6px; flex-shrink: 0; }
+  .del-btn { background: none; border: none; color: #8A93AC; font-size: 13px; cursor: pointer; padding: 2px 6px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease; }
   .del-btn:hover { color: #F87171; }
+  .edit-btn svg, .del-btn svg { width: 13px; height: 13px; }
+  .hi { width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px; flex-shrink: 0; }
+  .ri { width: 12px; height: 12px; vertical-align: -1px; margin-right: 4px; flex-shrink: 0; }
 
   .overlay { position: fixed; inset: 0; background: rgba(4,7,16,0.72); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; overflow-y: auto; opacity: 1; visibility: visible; transition: opacity 0.18s ease; }
   .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
   .modal { background: #161F38; border: 1px solid #23304F; border-top: 3px solid #E8C25C; border-radius: 16px; padding: 26px; max-width: 440px; width: 100%; margin: 20px 0; box-shadow: 0 20px 60px rgba(0,0,0,0.4); transform: translateY(10px) scale(0.98); transition: transform 0.18s ease; position: relative; }
+  @media (min-width: 760px) { .modal { max-width: 520px; } }
+  @media (min-width: 1200px) { .modal { max-width: 580px; } }
   .overlay.hidden .modal { transform: translateY(4px) scale(0.98); }
   .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-  .modal-close { background: none; border: none; color: #5C647C; font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 4px; margin: -4px -6px 0 0; border-radius: 6px; flex-shrink: 0; }
+  .modal .modal-close { background: none; border: none; color: #8A93AC; font-size: 24px; line-height: 1; cursor: pointer; padding: 4px 8px; margin: -6px -8px 0 0; border-radius: 6px; flex-shrink: 0; }
   .modal-close:hover { color: #E8ECF4; background: #1E2942; }
   .modal h3 { font-family: 'Cairo', sans-serif; color: #F4E4B8; margin-bottom: 6px; font-size: 17px; }
   .modal p { font-size: 12px; color: #8A93AC; margin-bottom: 16px; line-height: 1.5; }
@@ -68,7 +75,7 @@
   .modal button { border: none; border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s ease, opacity 0.15s ease; }
   .btn-save { flex: 1.4; background: #E8C25C; color: #0F1729; }
   .btn-save:hover { background: #F0CE72; }
-  .btn-cancel { flex: 1; background: transparent; color: #8A93AC; border: 1px solid #23304F; }
+  .modal .btn-cancel { flex: 1; background: rgba(199,206,222,0.06); color: #C7CEDE; border: 1px solid #3A4A6B; }
   .btn-cancel:hover { color: #E8ECF4; border-color: #3A4A6B; }
   .modal .helplink { font-size: 11px; color: #8A93AC; margin-top: 12px; display: block; }
   .modal .error-text { font-size: 12px; color: #F87171; margin-top: 10px; display: none; }
@@ -1559,8 +1566,8 @@ function renderDashboard(data) {
       <span class="line-left"><span class="dot ${healthDot(status)}"></span><span>${esc(name)}</span></span>
       <span style="display:flex;align-items:center;gap:8px;">
         <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
-        <button class="edit-btn" onclick="openClientModal('${c.id}')" title="Edit client">✎</button>
-        <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete client">🗑</button>
+        <button class="edit-btn" onclick="openClientModal('${c.id}')" title="Edit client"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
+        <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete client"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
       </span>
     </div>`;
   }).join('') || '<div class="empty">No clients found in this database yet.</div>';
@@ -1576,8 +1583,8 @@ function renderDashboard(data) {
       <span class="line-left"><span>${esc(name)}${role ? ' — ' + esc(role) : ''}</span></span>
       <span style="display:flex;align-items:center;gap:8px;">
         <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>
-        <button class="edit-btn" onclick="openTeamModal('${t.id}')" title="Edit team member">✎</button>
-        <button class="del-btn" onclick="deleteRecord('${t.id}')" title="Delete team member">🗑</button>
+        <button class="edit-btn" onclick="openTeamModal('${t.id}')" title="Edit team member"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
+        <button class="del-btn" onclick="deleteRecord('${t.id}')" title="Delete team member"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
       </span>
     </div>`;
   }).join('') || '<div class="empty">No team members found (Freelancer Edition has no Team database).</div>';
@@ -1656,14 +1663,14 @@ function renderDashboard(data) {
   let deadlinesPanel = '';
   if (hasProjects || hasTasks) {
     const deadlineRows = overdueItems.slice(0, 8).map(item => {
-      const icon = item.kind === 'project' ? '📁' : '✅';
+      const icon = item.kind === 'project' ? '<svg class="ri" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>' : '<svg class="ri" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
       const openFn = item.kind === 'project' ? 'openProjectModal' : 'openTaskModal';
       const editTitle = item.kind === 'project' ? 'Edit project' : 'Edit task';
       return `<div class="line">
         <span class="line-left"><span class="dot red"></span><span>${icon} ${esc(item.name)}</span></span>
         <span style="display:flex;align-items:center;gap:8px;">
           <span style="color:#F87171;font-size:12px;">${item.days} day${item.days === 1 ? '' : 's'} overdue</span>
-          <button class="edit-btn" onclick="${openFn}('${item.id}')" title="${editTitle}">✎</button>
+          <button class="edit-btn" onclick="${openFn}('${item.id}')" title="${editTitle}"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
         </span>
       </div>`;
     }).join('') || '<div class="empty">Nothing overdue — you\'re all caught up. 🎉</div>';
@@ -1671,7 +1678,7 @@ function renderDashboard(data) {
     deadlinesPanel = `
       <div class="panel">
         <div class="panel-head">
-          <h2>⏰ Deadlines</h2>
+          <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg>Deadlines</h2>
         </div>
         ${deadlineRows}
       </div>
@@ -1687,8 +1694,8 @@ function renderDashboard(data) {
         <span class="line-left"><span class="dot ${statusDot(status)}"></span><span>${esc(name)}</span></span>
         <span style="display:flex;align-items:center;gap:8px;">
           <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
-          <button class="edit-btn" onclick="openProjectModal('${p.id}')" title="Edit project">✎</button>
-          <button class="del-btn" onclick="deleteRecord('${p.id}')" title="Delete project">🗑</button>
+          <button class="edit-btn" onclick="openProjectModal('${p.id}')" title="Edit project"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
+          <button class="del-btn" onclick="deleteRecord('${p.id}')" title="Delete project"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
         </span>
       </div>`;
     }).join('') || '<div class="empty">No projects found in this database yet.</div>';
@@ -1696,7 +1703,7 @@ function renderDashboard(data) {
     projectsPanel = `
       <div class="panel" style="margin-top:14px;">
         <div class="panel-head">
-          <h2>📁 Projects</h2>
+          <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Projects</h2>
           <button class="add-btn" onclick="openProjectModal()">+ Add Project</button>
         </div>
         ${projectRows}
@@ -1714,8 +1721,8 @@ function renderDashboard(data) {
         <span class="line-left"><span class="dot ${taskStatusDot(status)}"></span><span>${esc(name)}</span></span>
         <span style="display:flex;align-items:center;gap:8px;">
           <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
-          <button class="edit-btn" onclick="openTaskModal('${t.id}')" title="Edit task">✎</button>
-          <button class="del-btn" onclick="deleteRecord('${t.id}')" title="Delete task">🗑</button>
+          <button class="edit-btn" onclick="openTaskModal('${t.id}')" title="Edit task"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
+          <button class="del-btn" onclick="deleteRecord('${t.id}')" title="Delete task"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
         </span>
       </div>`;
     }).join('') || '<div class="empty">No tasks found in this database yet.</div>';
@@ -1723,7 +1730,7 @@ function renderDashboard(data) {
     tasksPanel = `
       <div class="panel" style="margin-top:14px;">
         <div class="panel-head">
-          <h2>✅ Tasks</h2>
+          <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>Tasks</h2>
           <button class="add-btn" onclick="openTaskModal()">+ Add Task</button>
         </div>
         ${taskRows}
@@ -1740,8 +1747,8 @@ function renderDashboard(data) {
       <span class="line-left"><span class="dot ${financeStatusDot(status)}"></span><span>${esc(name)}</span></span>
       <span style="display:flex;align-items:center;gap:8px;">
         <span style="color:#8A93AC;font-size:12px;">$${amt.toLocaleString()} · ${esc(status)}</span>
-        <button class="edit-btn" onclick="openFinanceModal('${f.id}')" title="Edit entry">✎</button>
-        <button class="del-btn" onclick="deleteRecord('${f.id}')" title="Delete entry">🗑</button>
+        <button class="edit-btn" onclick="openFinanceModal('${f.id}')" title="Edit entry"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
+        <button class="del-btn" onclick="deleteRecord('${f.id}')" title="Delete entry"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
       </span>
     </div>`;
   }).join('') || '<div class="empty">No finance entries found in this database yet.</div>';
@@ -1749,9 +1756,9 @@ function renderDashboard(data) {
   const financePanel = `
     <div class="panel" style="margin-top:14px;">
       <div class="panel-head">
-        <h2>💰 Finance</h2>
+        <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Finance</h2>
         <span style="display:flex; gap:6px;">
-          <button class="add-btn" onclick="generateFinancialInsights()" id="insightsBtn">🧠 Insights</button>
+          <button class="add-btn" onclick="generateFinancialInsights()" id="insightsBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a6 6 0 0 0-4 10.47c.47.46.8 1.05.93 1.7L9 15h6l.07-.83c.13-.65.46-1.24.93-1.7A6 6 0 0 0 12 2Z"></path></svg>Insights</button>
           <button class="add-btn" onclick="openFinanceModal()">+ Add Entry</button>
         </span>
       </div>
@@ -1770,9 +1777,9 @@ function renderDashboard(data) {
         <span class="line-left"><span class="dot ${contentStatusDot(status)}"></span><span>${esc(name)}</span></span>
         <span style="display:flex;align-items:center;gap:8px;">
           <span style="color:#8A93AC;font-size:12px;">${esc(status)}</span>
-          <button class="edit-btn" id="repurpose-${c.id}" onclick="repurposeContent('${c.id}')" title="Repurpose with AI">✨</button>
-          <button class="edit-btn" onclick="openContentModal('${c.id}')" title="Edit content">✎</button>
-          <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete content">🗑</button>
+          <button class="edit-btn" id="repurpose-${c.id}" onclick="repurposeContent('${c.id}')" title="Repurpose with AI"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6L12 2z"></path></svg></button>
+          <button class="edit-btn" onclick="openContentModal('${c.id}')" title="Edit content"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
+          <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete content"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
         </span>
       </div>`;
     }).join('') || '<div class="empty">No content entries found in this database yet.</div>';
@@ -1780,7 +1787,7 @@ function renderDashboard(data) {
     contentPanel = `
       <div class="panel" style="margin-top:14px;">
         <div class="panel-head">
-          <h2>📅 Content Calendar</h2>
+          <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Content Calendar</h2>
           <button class="add-btn" onclick="openContentModal()">+ Add Content</button>
         </div>
         ${contentRows}
@@ -1802,7 +1809,7 @@ function renderDashboard(data) {
   const clientsHtml = `
     <div class="panel" style="margin-bottom:14px;">
       <div class="panel-head">
-        <h2>📋 Client Intake</h2>
+        <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"></rect><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="15" y2="16"></line></svg>Client Intake</h2>
         <button class="add-btn" onclick="openClientModal(null, true)">+ Start Intake</button>
       </div>
       <div class="empty" style="padding:4px 0;">Use this during a call with a new prospect to capture their info straight into Notion.</div>
@@ -1810,9 +1817,9 @@ function renderDashboard(data) {
     <div class="row">
       <div class="panel">
         <div class="panel-head">
-          <h2>👥 Client Health</h2>
+          <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Client Health</h2>
           <span style="display:flex; gap:6px;">
-            <button class="add-btn" onclick="recalculateHealthScores()" id="recalcBtn">🔄 Recalculate</button>
+            <button class="add-btn" onclick="recalculateHealthScores()" id="recalcBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Recalculate</button>
             <button class="add-btn" onclick="openClientModal()">+ Add Client</button>
           </span>
         </div>
@@ -1820,7 +1827,7 @@ function renderDashboard(data) {
       </div>
       <div class="panel">
         <div class="panel-head">
-          <h2>🧑‍🤝‍🧑 Team Workload</h2>
+          <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"></path><circle cx="19" cy="8" r="3"></circle></svg>Team Workload</h2>
           <button class="add-btn" onclick="openTeamModal()">+ Add Member</button>
         </div>
         ${teamRows}
@@ -1831,12 +1838,12 @@ function renderDashboard(data) {
   const meetingPanel = `
     <div class="panel" style="margin-top:14px;">
       <div class="panel-head">
-        <h2>🎯 Meeting-to-Action</h2>
+        <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1"></circle></svg>Meeting-to-Action</h2>
       </div>
       <p style="font-size:12px;color:#8A93AC;margin-bottom:10px;line-height:1.5;">Paste your raw meeting notes below. AI pulls out the action items and creates them as Tasks in Notion automatically, auto-assigned to whoever has the lowest current workload.</p>
       <textarea id="meetingNotes" placeholder="Paste meeting notes here..." style="width:100%;min-height:120px;background:#0F1729;border:1px solid #23304F;border-radius:8px;padding:9px 10px;color:#E8ECF4;font-size:13px;font-family:'Tajawal',sans-serif;resize:vertical;"></textarea>
       <div style="display:flex;justify-content:flex-end;margin-top:10px;">
-        <button class="add-btn" onclick="extractMeetingTasks()" id="meetingBtn">🎯 Extract Tasks</button>
+        <button class="add-btn" onclick="extractMeetingTasks()" id="meetingBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1"></circle></svg>Extract Tasks</button>
       </div>
       <div id="meetingResultBox" style="display:none; margin-top:10px; padding:10px; background:#0F1729; border:1px solid #23304F; border-radius:8px; font-size:12px; line-height:1.6; color:#C7CEDE;"></div>
     </div>
