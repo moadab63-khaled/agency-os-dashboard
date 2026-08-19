@@ -5,136 +5,242 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agency OS — Live Command Center</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=Tajawal:wght@400;500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Tajawal:wght@400;500;700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0F1729; background-image: radial-gradient(1100px 520px at 12% -10%, rgba(232,194,92,0.05), transparent 60%); font-family: 'Tajawal', sans-serif; color: #E8ECF4; padding: 24px 18px 60px; }
+  :root {
+    --bg: #090D18;
+    --surface: #131A2C;
+    --surface-2: #0F1524;
+    --surface-hover: #17203A;
+    --border: rgba(255,255,255,0.07);
+    --border-strong: rgba(255,255,255,0.14);
+    --text: #F2F4F8;
+    --text-dim: #8A93AC;
+    --text-faint: #5B6478;
+    --gold: #E8C25C;
+    --gold-soft: #D4AF6A;
+    --green: #34D399;
+    --red: #F87171;
+    --amber: #F5C044;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.45);
+    --shadow-md: 0 1px 0 rgba(255,255,255,0.03) inset, 0 10px 30px -10px rgba(0,0,0,0.55);
+    --shadow-lg: 0 1px 0 rgba(255,255,255,0.04) inset, 0 24px 60px -16px rgba(0,0,0,0.65);
+    --radius: 12px;
+    --radius-lg: 16px;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(900px 480px at 8% -8%, rgba(232,194,92,0.05), transparent 60%),
+      radial-gradient(700px 420px at 100% 0%, rgba(90,169,230,0.035), transparent 55%);
+    background-attachment: fixed;
+    font-family: 'Tajawal', sans-serif;
+    color: var(--text);
+    padding: 28px 20px 64px;
+    -webkit-font-smoothing: antialiased;
+  }
   .shell { display: block; max-width: 1760px; margin: 0 auto; }
   .main { min-width: 0; }
   .wrap { max-width: none; }
   @media (min-width: 980px) {
-    .shell { display: flex; align-items: flex-start; gap: 28px; }
+    .shell { display: flex; align-items: flex-start; gap: 32px; }
     .main { flex: 1; min-width: 0; }
   }
+
   .sidebar-brand { display: none; }
   @media (min-width: 980px) {
-    .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 4px 12px 18px; margin-bottom: 10px; border-bottom: 1px solid #23304F; }
-    .brand-mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(150deg, #E8C25C, #C9A227); color: #0F1729; font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .brand-text { font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 15px; color: #F4E4B8; letter-spacing: 0.2px; }
+    .sidebar-brand { display: flex; flex-direction: column; gap: 2px; padding: 6px 12px 20px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .sidebar-brand-row { display: flex; align-items: center; gap: 10px; }
+    .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(150deg, var(--gold), var(--gold-soft)); color: #0F1729; font-family: 'Cairo', sans-serif; font-weight: 900; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 14px -4px rgba(232,194,92,0.45); }
+    .brand-text { font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 15px; color: var(--text); letter-spacing: -0.1px; }
+    .brand-sub { font-size: 10.5px; color: var(--text-faint); letter-spacing: 0.4px; text-transform: uppercase; padding-left: 40px; margin-top: -2px; }
   }
-  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-  .header h1 { font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 24px; color: #F4E4B8; }
-  .badge { background: rgba(74,222,128,0.14); border: 1px solid #4ADE80; color: #4ADE80; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; }
-  .badge.off { background: rgba(201,162,39,0.14); border-color: #C9A227; color: #E8C25C; }
-  .gear { background: #161F38; border: 1px solid #23304F; color: #C7CEDE; border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.3px; color: var(--text); }
+
+  .badge { position: relative; display: inline-flex; align-items: center; gap: 7px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.35); color: var(--green); font-size: 11.5px; font-weight: 700; letter-spacing: 0.2px; padding: 6px 13px 6px 11px; border-radius: 999px; }
+  .badge .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; position: relative; }
+  .badge .live-dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: var(--green); opacity: 0.35; animation: pulse-ring 1.8s ease-out infinite; }
+  .badge.off { background: rgba(232,194,92,0.08); border-color: rgba(232,194,92,0.3); color: var(--gold); }
+  .badge.off .live-dot { background: var(--gold); }
+  .badge.off .live-dot::after { background: var(--gold); animation: none; opacity: 0; }
+  @keyframes pulse-ring {
+    0% { transform: scale(0.7); opacity: 0.5; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+
+  .gear { background: var(--surface); border: 1px solid var(--border); color: #C7CEDE; border-radius: 10px; padding: 8px 15px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease; }
+  .gear:hover { border-color: var(--border-strong); background: var(--surface-hover); transform: translateY(-1px); }
   .gear svg { width: 15px; height: 15px; }
 
-  .note { font-size: 12px; color: #8A93AC; margin-bottom: 18px; line-height: 1.5; }
+  .note { font-size: 12.5px; color: var(--text-dim); margin-bottom: 22px; line-height: 1.55; }
 
-  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px; }
-  @media (min-width: 640px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 22px; }
+  @media (min-width: 640px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
   @media (min-width: 980px) { .grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
-  .card { background: linear-gradient(165deg, #182242 0%, #141C36 100%); border: 1px solid #23304F; border-top: 2px solid #2A3A5C; border-radius: 14px; padding: 14px 15px; position: relative; overflow: hidden; transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
-  .card:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(0,0,0,0.28); border-color: #2E3E64; }
-  .card-icon { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; background: rgba(199,206,222,0.08); color: #8A93AC; }
-  .card-icon svg { width: 14px; height: 14px; }
-  .card.green .card-icon { background: rgba(74,222,128,0.12); color: #4ADE80; }
-  .card.red .card-icon { background: rgba(248,113,113,0.12); color: #F87171; }
-  .card.gold .card-icon { background: rgba(232,194,92,0.14); color: #E8C25C; }
-  .card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #8A93AC; margin-bottom: 5px; font-weight: 700; }
-  .card .value { font-family: 'Cairo', sans-serif; font-size: 22px; font-weight: 800; line-height: 1.1; letter-spacing: -0.2px; }
-  .green { color: #4ADE80; } .red { color: #F87171; } .gold { color: #E8C25C; }
-  .card:has(.value.green) { border-top-color: #4ADE80; }
-  .card:has(.value.red) { border-top-color: #F87171; }
-  .card:has(.value.gold) { border-top-color: #E8C25C; }
-  @media (min-width: 640px) { .card { padding: 18px 20px; } .card .label { font-size: 11px; } .card .value { font-size: 26px; } .card-icon { width: 30px; height: 30px; } .card-icon svg { width: 16px; height: 16px; } }
-  @media (min-width: 1500px) { .card { padding: 22px 24px; } .card .label { font-size: 12px; } .card .value { font-size: 30px; } .card-icon { width: 34px; height: 34px; margin-bottom: 14px; } .card-icon svg { width: 18px; height: 18px; } .header h1 { font-size: 28px; } .panel { padding: 22px; } .panel-head h2 { font-size: 15.5px; } .line { font-size: 14px; padding: 10px 0; } }
 
-  .row { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; margin-bottom: 14px; align-items: start; }
+  .card {
+    background: linear-gradient(165deg, var(--surface) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    transition: transform 0.2s cubic-bezier(.2,.8,.2,1), box-shadow 0.2s ease, border-color 0.2s ease;
+    animation: card-in 0.5s cubic-bezier(.2,.8,.2,1) backwards;
+  }
+  .grid .card:nth-child(1) { animation-delay: 0.02s; }
+  .grid .card:nth-child(2) { animation-delay: 0.06s; }
+  .grid .card:nth-child(3) { animation-delay: 0.10s; }
+  .grid .card:nth-child(4) { animation-delay: 0.14s; }
+  .grid .card:nth-child(5) { animation-delay: 0.18s; }
+  .grid .card:nth-child(6) { animation-delay: 0.22s; }
+  @keyframes card-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--border-strong); }
+  .card.green { border-left-color: var(--green); }
+  .card.red { border-left-color: var(--red); }
+  .card.gold { border-left-color: var(--gold); }
+  .card .label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.9px; color: var(--text-faint); margin-bottom: 10px; font-weight: 700; }
+  .card .value { font-family: 'Cairo', sans-serif; font-size: 26px; font-weight: 800; line-height: 1.1; letter-spacing: -0.4px; font-variant-numeric: tabular-nums; }
+  .green { color: var(--green); } .red { color: var(--red); } .gold { color: var(--gold); }
+  .card-icon { display: none; }
+  @media (min-width: 640px) { .card { padding: 20px 22px; } .card .value { font-size: 28px; } }
+  @media (min-width: 1500px) { .card { padding: 24px 26px; } .card .label { font-size: 11px; } .card .value { font-size: 32px; } .header h1 { font-size: 26px; } .panel { padding: 24px; } .panel-head h2 { font-size: 14.5px; } .line { font-size: 14px; padding: 11px 0; } }
+
+  .row { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; margin-bottom: 16px; align-items: start; }
   @media (max-width: 760px) { .row { grid-template-columns: 1fr; } }
-  .panel { background: #161F38; border: 1px solid #23304F; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; overflow-y: auto; }
-  .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .panel-head h2 { font-family: 'Cairo', sans-serif; font-size: 14px; color: #F4E4B8; margin-bottom: 0; }
-  .add-btn { background: rgba(232,194,92,0.14); border: 1px solid #E8C25C; color: #E8C25C; font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    box-shadow: var(--shadow-md);
+    transition: border-color 0.2s ease;
+    animation: card-in 0.5s cubic-bezier(.2,.8,.2,1) backwards;
+    animation-delay: 0.08s;
+  }
+  .panel:hover { border-color: var(--border-strong); }
+
+  .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .panel-head h2 { font-family: 'Cairo', sans-serif; font-weight: 700; font-size: 13.5px; letter-spacing: 0.1px; color: var(--text); margin-bottom: 0; display: flex; align-items: center; }
+
+  .add-btn {
+    background: rgba(232,194,92,0.09);
+    border: 1px solid rgba(232,194,92,0.3);
+    color: var(--gold);
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 6px 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  }
+  .add-btn:hover { background: rgba(232,194,92,0.16); border-color: rgba(232,194,92,0.5); }
+  .add-btn:active { transform: scale(0.97); }
   .ic { width: 13px; height: 13px; flex-shrink: 0; }
   .add-btn .ic { margin-right: 5px; }
-  .line { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1E2942; font-size: 13px; gap: 8px; flex-wrap: wrap; row-gap: 6px; }
+
+  .line { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; gap: 8px; flex-wrap: wrap; row-gap: 6px; transition: background 0.15s ease; }
   @media (max-width: 480px) { .line-left { flex: 1 1 100%; } }
   .line:last-child { border-bottom: none; }
+  .line:hover { background: rgba(255,255,255,0.02); margin: 0 -10px; padding-left: 10px; padding-right: 10px; border-radius: 9px; }
   .line-left { display: flex; align-items: center; min-width: 0; }
   .line-left span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; flex-shrink: 0; }
-  .dot.green { background: #4ADE80; } .dot.yellow { background: #F5C044; } .dot.red { background: #F87171; }
-  .bar-track { width: 80px; height: 6px; background: #1E2942; border-radius: 4px; overflow: hidden; }
-  .bar-fill { height: 100%; background: #E8C25C; }
-  .empty { color: #5C647C; font-size: 13px; padding: 6px 0; flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
-  .edit-btn { background: none; border: none; color: #8A93AC; font-size: 13px; cursor: pointer; padding: 2px 6px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease; }
-  .edit-btn:hover { color: #E8C25C; }
-  .del-btn { background: none; border: none; color: #8A93AC; font-size: 13px; cursor: pointer; padding: 2px 6px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; transition: color 0.15s ease; }
-  .del-btn:hover { color: #F87171; }
-  .edit-btn svg, .del-btn svg { width: 13px; height: 13px; }
-  .hi { width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px; flex-shrink: 0; }
-  .ri { width: 12px; height: 12px; vertical-align: -1px; margin-right: 4px; flex-shrink: 0; }
-  .avatar { width: 24px; height: 24px; border-radius: 50%; border: 1px solid; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; font-family: 'Cairo', sans-serif; flex-shrink: 0; margin-right: 9px; }
-  .badge-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 9px 3px 7px; border-radius: 999px; white-space: nowrap; }
-  .badge-pill .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-  .badge-pill.green { background: rgba(74,222,128,0.12); color: #4ADE80; }
-  .badge-pill.yellow { background: rgba(245,192,68,0.12); color: #F5C044; }
-  .badge-pill.red { background: rgba(248,113,113,0.12); color: #F87171; }
-  .badge-pill.neutral { background: rgba(138,147,172,0.12); color: #8A93AC; }
-  .line:hover { background: rgba(255,255,255,0.015); margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 8px; }
-  .panel { transition: border-color 0.18s ease; }
-  .panel:hover { border-color: #2E3E64; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 9px; flex-shrink: 0; }
+  .dot.green { background: var(--green); } .dot.yellow { background: var(--amber); } .dot.red { background: var(--red); }
+  .bar-track { width: 80px; height: 5px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold-soft), var(--gold)); border-radius: 4px; }
 
-  .overlay { position: fixed; inset: 0; background: rgba(4,7,16,0.72); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; overflow-y: auto; opacity: 1; visibility: visible; transition: opacity 0.18s ease; }
+  .empty { color: var(--text-faint); font-size: 12.5px; padding: 26px 8px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; line-height: 1.5; }
+  .empty .empty-icon { width: 30px; height: 30px; opacity: 0.35; }
+
+  .chart-panel { animation-delay: 0.02s; }
+  .chart-total { font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 800; color: var(--gold); }
+  .revenue-chart rect { transition: opacity 0.15s ease; }
+  .revenue-chart rect:hover { opacity: 0.85; }
+  .chart-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 34px 20px; color: var(--text-faint); font-size: 12.5px; text-align: center; line-height: 1.5; }
+  .chart-empty svg { width: 32px; height: 32px; opacity: 0.3; }
+
+  .edit-btn { background: none; border: none; color: var(--text-dim); font-size: 13px; cursor: pointer; padding: 3px 6px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; transition: color 0.15s ease, background 0.15s ease; }
+  .edit-btn:hover { color: var(--gold); background: rgba(232,194,92,0.08); }
+  .del-btn { background: none; border: none; color: var(--text-dim); font-size: 13px; cursor: pointer; padding: 3px 6px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; transition: color 0.15s ease, background 0.15s ease; }
+  .del-btn:hover { color: var(--red); background: rgba(248,113,113,0.08); }
+  .edit-btn svg, .del-btn svg { width: 13px; height: 13px; }
+  .hi { width: 14px; height: 14px; vertical-align: -2px; margin-right: 7px; flex-shrink: 0; color: var(--text-faint); }
+  .ri { width: 12px; height: 12px; vertical-align: -1px; margin-right: 4px; flex-shrink: 0; }
+
+  .avatar { width: 25px; height: 25px; border-radius: 50%; border: 1px solid; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; font-family: 'Cairo', sans-serif; flex-shrink: 0; margin-right: 10px; }
+
+  .badge-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.1px; padding: 3.5px 9px 3.5px 7px; border-radius: 999px; white-space: nowrap; }
+  .badge-pill .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .badge-pill.green { background: rgba(52,211,153,0.12); color: var(--green); }
+  .badge-pill.yellow { background: rgba(245,192,68,0.12); color: var(--amber); }
+  .badge-pill.red { background: rgba(248,113,113,0.12); color: var(--red); }
+  .badge-pill.neutral { background: rgba(138,147,172,0.12); color: var(--text-dim); }
+
+  .overlay { position: fixed; inset: 0; background: rgba(4,6,12,0.78); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; overflow-y: auto; opacity: 1; visibility: visible; transition: opacity 0.2s ease; }
   .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-  .modal { background: #161F38; border: 1px solid #23304F; border-top: 3px solid #E8C25C; border-radius: 16px; padding: 26px; max-width: 440px; width: 100%; margin: 20px 0; box-shadow: 0 20px 60px rgba(0,0,0,0.4); transform: translateY(10px) scale(0.98); transition: transform 0.18s ease; position: relative; }
+  .modal { background: var(--surface); border: 1px solid var(--border-strong); border-top: 2px solid var(--gold); border-radius: var(--radius-lg); padding: 28px; max-width: 440px; width: 100%; margin: 20px 0; box-shadow: var(--shadow-lg); transform: translateY(8px) scale(0.98); transition: transform 0.2s cubic-bezier(.2,.8,.2,1); position: relative; }
   @media (min-width: 760px) { .modal { max-width: 520px; } }
   @media (min-width: 1200px) { .modal { max-width: 580px; } }
   .overlay.hidden .modal { transform: translateY(4px) scale(0.98); }
   .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-  .modal .modal-close { background: none; border: none; color: #8A93AC; font-size: 24px; line-height: 1; cursor: pointer; padding: 4px 8px; margin: -6px -8px 0 0; border-radius: 6px; flex-shrink: 0; }
-  .modal-close:hover { color: #E8ECF4; background: #1E2942; }
-  .modal h3 { font-family: 'Cairo', sans-serif; color: #F4E4B8; margin-bottom: 6px; font-size: 17px; }
-  .modal p { font-size: 12px; color: #8A93AC; margin-bottom: 16px; line-height: 1.5; }
-  .modal label { display: block; font-size: 12px; color: #C7CEDE; margin: 10px 0 4px; }
-  .modal input, .modal select, .modal textarea { width: 100%; background: #0F1729; border: 1px solid #23304F; border-radius: 8px; padding: 9px 10px; color: #E8ECF4; font-size: 13px; font-family: 'Tajawal', sans-serif; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
-  .modal input:focus, .modal select:focus, .modal textarea:focus { outline: none; border-color: #E8C25C; box-shadow: 0 0 0 3px rgba(232,194,92,0.15); }
+  .modal .modal-close { background: none; border: none; color: var(--text-dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 4px 8px; margin: -6px -8px 0 0; border-radius: 7px; flex-shrink: 0; transition: background 0.15s ease, color 0.15s ease; }
+  .modal-close:hover { color: var(--text); background: var(--surface-hover); }
+  .modal h3 { font-family: 'Cairo', sans-serif; font-weight: 700; color: var(--text); margin-bottom: 6px; font-size: 17px; letter-spacing: -0.2px; }
+  .modal p { font-size: 12px; color: var(--text-dim); margin-bottom: 18px; line-height: 1.55; }
+  .modal label { display: block; font-size: 11.5px; font-weight: 600; color: #B8C0D4; margin: 12px 0 5px; letter-spacing: 0.1px; }
+  .modal input, .modal select, .modal textarea { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 10px 11px; color: var(--text); font-size: 13px; font-family: 'Tajawal', sans-serif; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+  .modal input:focus, .modal select:focus, .modal textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(232,194,92,0.14); }
   .modal textarea { resize: vertical; min-height: 70px; }
-  .modal .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #E8C25C; font-weight: 700; margin-top: 16px; padding-top: 12px; border-top: 1px solid #23304F; }
-  .modal .actions { display: flex; gap: 10px; margin-top: 18px; }
-  .modal button { border: none; border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s ease, opacity 0.15s ease; }
-  .btn-save { flex: 1.4; background: #E8C25C; color: #0F1729; }
+  .modal .section-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--gold); font-weight: 700; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .modal .actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal button { border: none; border-radius: 9px; padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s ease, opacity 0.15s ease, transform 0.1s ease; }
+  .btn-save { flex: 1.4; background: var(--gold); color: #0F1729; box-shadow: 0 6px 18px -6px rgba(232,194,92,0.5); }
   .btn-save:hover { background: #F0CE72; }
-  .modal .btn-cancel { flex: 1; background: rgba(199,206,222,0.06); color: #C7CEDE; border: 1px solid #3A4A6B; }
-  .btn-cancel:hover { color: #E8ECF4; border-color: #3A4A6B; }
-  .modal .helplink { font-size: 11px; color: #8A93AC; margin-top: 12px; display: block; }
-  .modal .error-text { font-size: 12px; color: #F87171; margin-top: 10px; display: none; }
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #161F38; border: 1px solid #E8C25C; color: #F4E4B8; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 20; opacity: 0; transition: opacity 0.25s ease; pointer-events: none; }
-  .toast.show { opacity: 1; }
+  .btn-save:active { transform: scale(0.98); }
+  .modal .btn-cancel { flex: 1; background: rgba(199,206,222,0.05); color: #C7CEDE; border: 1px solid var(--border-strong); }
+  .btn-cancel:hover { color: var(--text); border-color: rgba(255,255,255,0.24); }
+  .modal .helplink { font-size: 11px; color: var(--text-faint); margin-top: 14px; display: block; }
+  .modal .error-text { font-size: 12px; color: var(--red); margin-top: 10px; display: none; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(6px); background: var(--surface); border: 1px solid rgba(232,194,92,0.4); color: var(--text); padding: 11px 20px; border-radius: 11px; font-size: 13px; font-weight: 700; box-shadow: var(--shadow-lg); z-index: 20; opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   #tabsNav, #tabsNavDesktop { display: none; }
-  body.is-connected #tabsNav { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; background: #161F38; border: 1px solid #23304F; border-radius: 12px; padding: 6px; }
+  body.is-connected #tabsNav { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 13px; padding: 6px; }
   @media (min-width: 640px) { body.is-connected #tabsNav { flex-wrap: nowrap; gap: 3px; padding: 3px; } }
-  .tab-btn { background: transparent; border: none; color: #8A93AC; font-size: 12px; font-weight: 700; padding: 9px 8px; border-radius: 9px; cursor: pointer; font-family: 'Tajawal', sans-serif; flex: 1 1 calc(50% - 3px); white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s ease, color 0.15s ease; }
+  .tab-btn { background: transparent; border: none; color: var(--text-dim); font-size: 12px; font-weight: 700; padding: 9px 8px; border-radius: 9px; cursor: pointer; font-family: 'Tajawal', sans-serif; flex: 1 1 calc(50% - 3px); white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s ease, color 0.15s ease; }
   .tab-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
-  .tab-btn.active { background: #23304F; color: #F4E4B8; }
+  .tab-btn.active { background: var(--surface-hover); color: var(--text); }
   .tab-content.hidden { display: none; }
   @media (min-width: 640px) { .tab-btn { flex: 1 0 auto; font-size: 13px; padding: 10px 16px; } }
   @media (min-width: 980px) {
     body.is-connected #tabsNav { display: none; }
-    body.is-connected #tabsNavDesktop { display: flex; flex-direction: column; width: 232px; flex-shrink: 0; align-items: stretch; gap: 2px; background: #131B32; border-radius: 16px; padding: 14px 10px; position: sticky; top: 24px; height: fit-content; box-shadow: 0 12px 32px rgba(0,0,0,0.28); }
-    #tabsNavDesktop .tab-btn { justify-content: flex-start; padding: 10px 12px; border-radius: 10px; position: relative; font-size: 13.5px; }
+    body.is-connected #tabsNavDesktop { display: flex; flex-direction: column; width: 234px; flex-shrink: 0; align-items: stretch; gap: 2px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 11px; position: sticky; top: 28px; height: fit-content; box-shadow: var(--shadow-md); }
+    #tabsNavDesktop .tab-btn { justify-content: flex-start; padding: 10px 13px; border-radius: 10px; position: relative; font-size: 13.5px; }
     #tabsNavDesktop .tab-btn svg { width: 16px; height: 16px; }
-    #tabsNavDesktop .tab-btn.active { background: rgba(232,194,92,0.1); color: #F4E4B8; }
-    #tabsNavDesktop .tab-btn.active::before { content: ''; position: absolute; left: -10px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 3px; background: #E8C25C; }
-    #tabsNavDesktop .tab-btn:not(.active):hover { background: #1A2340; color: #C7CEDE; }
+    #tabsNavDesktop .tab-btn.active { background: rgba(232,194,92,0.1); color: var(--text); font-weight: 700; }
+    #tabsNavDesktop .tab-btn.active::before { content: ''; position: absolute; left: -11px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 3px; background: var(--gold); }
+    #tabsNavDesktop .tab-btn:not(.active):hover { background: rgba(255,255,255,0.03); color: #C7CEDE; }
   }
 </style>
+
 </head>
 <body>
 <div class="shell">
   <div class="tabs" id="tabsNavDesktop">
-    <div class="sidebar-brand"><span class="brand-mark">A</span><span class="brand-text">Agency OS</span></div>
+    <div class="sidebar-brand"><div class="sidebar-brand-row"><span class="brand-mark">A</span><span class="brand-text">Agency OS</span></div><span class="brand-sub">Command Center</span></div>
     <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>Overview</button>
     <button class="tab-btn" data-tab="clients" onclick="switchTab('clients')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Clients</button>
     <button class="tab-btn" data-tab="projects" onclick="switchTab('projects')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Projects &amp; Tasks</button>
@@ -1409,6 +1515,73 @@ async function saveContentEntry() {
   }
 }
 
+function buildRevenueChartSvg(financePages) {
+  const entries = Object.values(financePages);
+  const byMonth = {};
+  entries.forEach(f => {
+    const props = f.properties || {};
+    const type = selectName(props['Type']);
+    const status = selectName(props['Invoice Status']);
+    const dateStr = (props['Date'] && props['Date'].date && props['Date'].date.start) || '';
+    if (type !== 'Income' || status !== 'Paid' || !dateStr) return;
+    const month = dateStr.slice(0, 7);
+    const amt = numberVal(props['Amount']);
+    byMonth[month] = (byMonth[month] || 0) + amt;
+  });
+
+  const months = Object.keys(byMonth).sort();
+  if (months.length < 2) {
+    return `<div class="chart-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
+      <span>Revenue chart appears once you have paid invoices across at least 2 different months.</span>
+    </div>`;
+  }
+
+  const shown = months.slice(-6);
+  const values = shown.map(m => byMonth[m]);
+  const max = Math.max(...values, 1);
+  const W = 640, H = 200, padL = 6, padR = 6, padT = 16, padB = 28;
+  const chartW = W - padL - padR, chartH = H - padT - padB;
+  const barGap = 14;
+  const barW = (chartW - barGap * (shown.length - 1)) / shown.length;
+
+  const monthLabel = (m) => {
+    const [y, mo] = m.split('-');
+    const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return names[parseInt(mo, 10) - 1] + ' ' + y.slice(2);
+  };
+
+  let bars = '';
+  let labels = '';
+  shown.forEach((m, i) => {
+    const v = byMonth[m];
+    const h = Math.max(4, (v / max) * chartH);
+    const x = padL + i * (barW + barGap);
+    const y = padT + (chartH - h);
+    const isLast = i === shown.length - 1;
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="5" fill="${isLast ? 'url(#barGoldActive)' : 'url(#barGold)'}"><title>${monthLabel(m)}: $${v.toLocaleString()}</title></rect>`;
+    if (isLast) {
+      bars += `<text x="${(x + barW / 2).toFixed(1)}" y="${(y - 8).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#F4E4B8" font-family="Cairo,sans-serif">$${v.toLocaleString()}</text>`;
+    }
+    labels += `<text x="${(x + barW / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#5B6478" font-family="Tajawal,sans-serif">${monthLabel(m)}</text>`;
+  });
+
+  return `<svg viewBox="0 0 ${W} ${H}" class="revenue-chart" preserveAspectRatio="none" style="width:100%;height:180px;">
+    <defs>
+      <linearGradient id="barGold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#E8C25C" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="#E8C25C" stop-opacity="0.18"/>
+      </linearGradient>
+      <linearGradient id="barGoldActive" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#F0CE72"/>
+        <stop offset="100%" stop-color="#D4AF6A"/>
+      </linearGradient>
+    </defs>
+    ${bars}
+    ${labels}
+  </svg>`;
+}
+
 function computeFinanceStats() {
   const entries = Object.values(lastFinancePages);
   let paidRevenue = 0, pendingAmount = 0, overdueAmount = 0, expenseTotal = 0;
@@ -1650,7 +1823,7 @@ function renderDashboard(data) {
         <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete client"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
       </span>
     </div>`;
-  }).join('') || '<div class="empty">No clients found in this database yet.</div>';
+  }).join('') || '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"></path></svg><span>No clients found in this database yet.</span></div>';
 
   const maxWorkload = Math.max(1, ...team.map(t => numberVal(getProp(t, 'Current Workload'))));
   const teamRows = team.slice(0, 6).map(t => {
@@ -1667,7 +1840,7 @@ function renderDashboard(data) {
         <button class="del-btn" onclick="deleteRecord('${t.id}')" title="Delete team member"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
       </span>
     </div>`;
-  }).join('') || '<div class="empty">No team members found (Freelancer Edition has no Team database).</div>';
+  }).join('') || '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"></path></svg><span>No team members found (Freelancer Edition has no Team database).</span></div>';
 
   const hasProjects = !!(data.projects);
   const hasTasks = !!(data.tasks);
@@ -1753,7 +1926,7 @@ function renderDashboard(data) {
           <button class="edit-btn" onclick="${openFn}('${item.id}')" title="${editTitle}"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
         </span>
       </div>`;
-    }).join('') || '<div class="empty">Nothing overdue — you\'re all caught up. 🎉</div>';
+    }).join('') || '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"></path></svg><span>Nothing overdue — you\'re all caught up. 🎉</span></div>';
 
     deadlinesPanel = `
       <div class="panel">
@@ -1778,7 +1951,7 @@ function renderDashboard(data) {
           <button class="del-btn" onclick="deleteRecord('${p.id}')" title="Delete project"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
         </span>
       </div>`;
-    }).join('') || '<div class="empty">No projects found in this database yet.</div>';
+    }).join('') || '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"></path></svg><span>No projects found in this database yet.</span></div>';
 
     projectsPanel = `
       <div class="panel" style="margin-top:14px;">
@@ -1805,7 +1978,7 @@ function renderDashboard(data) {
           <button class="del-btn" onclick="deleteRecord('${t.id}')" title="Delete task"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
         </span>
       </div>`;
-    }).join('') || '<div class="empty">No tasks found in this database yet.</div>';
+    }).join('') || '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"></path></svg><span>No tasks found in this database yet.</span></div>';
 
     tasksPanel = `
       <div class="panel" style="margin-top:14px;">
@@ -1832,7 +2005,7 @@ function renderDashboard(data) {
         <button class="del-btn" onclick="deleteRecord('${f.id}')" title="Delete entry"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
       </span>
     </div>`;
-  }).join('') || '<div class="empty">No finance entries found in this database yet.</div>';
+  }).join('') || '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"></path></svg><span>No finance entries found in this database yet.</span></div>';
 
   const financePanel = `
     <div class="panel" style="margin-top:14px;">
@@ -1863,7 +2036,7 @@ function renderDashboard(data) {
           <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete content"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
         </span>
       </div>`;
-    }).join('') || '<div class="empty">No content entries found in this database yet.</div>';
+    }).join('') || '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"></path></svg><span>No content entries found in this database yet.</span></div>';
 
     contentPanel = `
       <div class="panel" style="margin-top:14px;">
@@ -1876,7 +2049,16 @@ function renderDashboard(data) {
     `;
   }
 
+  const revenueChartSvg = buildRevenueChartSvg(lastFinancePages);
+
   const overviewHtml = `
+    <div class="panel chart-panel" style="margin-bottom:16px;">
+      <div class="panel-head">
+        <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Revenue</h2>
+        <span class="chart-total">${revenue.toLocaleString() !== '0' ? '$' + revenue.toLocaleString() + ' total paid' : ''}</span>
+      </div>
+      ${revenueChartSvg}
+    </div>
     <div class="grid">
       <div class="card green"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div><div class="label">Revenue (Paid)</div><div class="value green">$${revenue.toLocaleString()}</div></div>
       <div class="card red"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div class="label">Overdue Invoices</div><div class="value red">$${overdue.toLocaleString()}</div></div>
@@ -1955,7 +2137,7 @@ async function fetchAndRender() {
   const note = document.getElementById('noteText');
 
   if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients) {
-    badge.textContent = 'Not connected';
+    badge.innerHTML = '<span class="live-dot"></span>Not connected';
     badge.className = 'badge off';
     note.textContent = 'Connect your own Notion databases below to see your real numbers here. Until then, this shows nothing — it never displays anyone else\'s data.';
     TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
@@ -1963,7 +2145,7 @@ async function fetchAndRender() {
     return;
   }
 
-  badge.textContent = 'Connecting…';
+  badge.innerHTML = '<span class="live-dot"></span>Connecting…';
   badge.className = 'badge off';
 
   try {
@@ -1975,7 +2157,7 @@ async function fetchAndRender() {
     const data = await res.json().catch(() => ({}));
     if (data.error) throw new Error(data.error);
     if (!res.ok) throw new Error('Request failed: ' + res.status);
-    badge.textContent = 'Connected — live';
+    badge.innerHTML = '<span class="live-dot"></span>Connected — live';
     badge.className = 'badge';
 
     const dbLabels = { clients: 'Clients', finance: 'Finance', team: 'Team', projects: 'Projects', tasks: 'Tasks', content: 'Content Calendar' };
@@ -1988,7 +2170,7 @@ async function fetchAndRender() {
     }
     renderDashboard(data);
   } catch (err) {
-    badge.textContent = 'Connection error';
+    badge.innerHTML = '<span class="live-dot"></span>Connection error';
     badge.className = 'badge off';
     note.textContent = 'Could not load your data (' + err.message + '). Check your token and database IDs in Settings.';
     TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
