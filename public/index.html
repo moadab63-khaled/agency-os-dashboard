@@ -32,8 +32,7 @@
 
   .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px; }
   @media (min-width: 640px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
-  @media (min-width: 980px) { .grid { grid-template-columns: repeat(4, 1fr); gap: 14px; } }
-  @media (min-width: 1500px) { .grid { grid-template-columns: repeat(6, 1fr); gap: 16px; } }
+  @media (min-width: 980px) { .grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
   .card { background: linear-gradient(165deg, #182242 0%, #141C36 100%); border: 1px solid #23304F; border-top: 2px solid #2A3A5C; border-radius: 14px; padding: 14px 15px; position: relative; overflow: hidden; transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
   .card:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(0,0,0,0.28); border-color: #2E3E64; }
   .card-icon { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; background: rgba(199,206,222,0.08); color: #8A93AC; }
@@ -48,6 +47,7 @@
   .card:has(.value.red) { border-top-color: #F87171; }
   .card:has(.value.gold) { border-top-color: #E8C25C; }
   @media (min-width: 640px) { .card { padding: 18px 20px; } .card .label { font-size: 11px; } .card .value { font-size: 26px; } .card-icon { width: 30px; height: 30px; } .card-icon svg { width: 16px; height: 16px; } }
+  @media (min-width: 1500px) { .card { padding: 22px 24px; } .card .label { font-size: 12px; } .card .value { font-size: 30px; } .card-icon { width: 34px; height: 34px; margin-bottom: 14px; } .card-icon svg { width: 18px; height: 18px; } .header h1 { font-size: 28px; } .panel { padding: 22px; } .panel-head h2 { font-size: 15.5px; } .line { font-size: 14px; padding: 10px 0; } }
 
   .row { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; margin-bottom: 14px; align-items: start; }
   @media (max-width: 760px) { .row { grid-template-columns: 1fr; } }
@@ -57,7 +57,8 @@
   .add-btn { background: rgba(232,194,92,0.14); border: 1px solid #E8C25C; color: #E8C25C; font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; }
   .ic { width: 13px; height: 13px; flex-shrink: 0; }
   .add-btn .ic { margin-right: 5px; }
-  .line { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1E2942; font-size: 13px; gap: 8px; }
+  .line { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1E2942; font-size: 13px; gap: 8px; flex-wrap: wrap; row-gap: 6px; }
+  @media (max-width: 480px) { .line-left { flex: 1 1 100%; } }
   .line:last-child { border-bottom: none; }
   .line-left { display: flex; align-items: center; min-width: 0; }
   .line-left span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -111,30 +112,33 @@
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #161F38; border: 1px solid #E8C25C; color: #F4E4B8; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 20; opacity: 0; transition: opacity 0.25s ease; pointer-events: none; }
   .toast.show { opacity: 1; }
 
-  .tabs { display: none; flex-direction: row; gap: 3px; margin-bottom: 16px; background: #161F38; border: 1px solid #23304F; border-radius: 12px; padding: 3px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .tab-btn { background: transparent; border: none; color: #8A93AC; font-size: 12px; font-weight: 700; padding: 9px 12px; border-radius: 9px; cursor: pointer; font-family: 'Tajawal', sans-serif; flex: 1 0 auto; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s ease, color 0.15s ease; }
+  #tabsNav, #tabsNavDesktop { display: none; }
+  body.is-connected #tabsNav { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; background: #161F38; border: 1px solid #23304F; border-radius: 12px; padding: 6px; }
+  @media (min-width: 640px) { body.is-connected #tabsNav { flex-wrap: nowrap; gap: 3px; padding: 3px; } }
+  .tab-btn { background: transparent; border: none; color: #8A93AC; font-size: 12px; font-weight: 700; padding: 9px 8px; border-radius: 9px; cursor: pointer; font-family: 'Tajawal', sans-serif; flex: 1 1 calc(50% - 3px); white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s ease, color 0.15s ease; }
   .tab-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
   .tab-btn.active { background: #23304F; color: #F4E4B8; }
   .tab-content.hidden { display: none; }
-  @media (min-width: 640px) { .tab-btn { font-size: 13px; padding: 10px 16px; } }
+  @media (min-width: 640px) { .tab-btn { flex: 1 0 auto; font-size: 13px; padding: 10px 16px; } }
   @media (min-width: 980px) {
-    .tabs { flex-direction: column; width: 232px; flex-shrink: 0; align-items: stretch; gap: 2px; background: #131B32; border-radius: 16px; padding: 14px 10px; position: sticky; top: 24px; height: fit-content; box-shadow: 0 12px 32px rgba(0,0,0,0.28); }
-    .tab-btn { justify-content: flex-start; padding: 10px 12px; border-radius: 10px; position: relative; font-size: 13.5px; }
-    .tab-btn svg { width: 16px; height: 16px; }
-    .tab-btn.active { background: rgba(232,194,92,0.1); color: #F4E4B8; }
-    .tab-btn.active::before { content: ''; position: absolute; left: -10px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 3px; background: #E8C25C; }
-    .tab-btn:not(.active):hover { background: #1A2340; color: #C7CEDE; }
+    body.is-connected #tabsNav { display: none; }
+    body.is-connected #tabsNavDesktop { display: flex; flex-direction: column; width: 232px; flex-shrink: 0; align-items: stretch; gap: 2px; background: #131B32; border-radius: 16px; padding: 14px 10px; position: sticky; top: 24px; height: fit-content; box-shadow: 0 12px 32px rgba(0,0,0,0.28); }
+    #tabsNavDesktop .tab-btn { justify-content: flex-start; padding: 10px 12px; border-radius: 10px; position: relative; font-size: 13.5px; }
+    #tabsNavDesktop .tab-btn svg { width: 16px; height: 16px; }
+    #tabsNavDesktop .tab-btn.active { background: rgba(232,194,92,0.1); color: #F4E4B8; }
+    #tabsNavDesktop .tab-btn.active::before { content: ''; position: absolute; left: -10px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 3px; background: #E8C25C; }
+    #tabsNavDesktop .tab-btn:not(.active):hover { background: #1A2340; color: #C7CEDE; }
   }
 </style>
 </head>
 <body>
 <div class="shell">
-  <div class="tabs" id="tabsNav">
+  <div class="tabs" id="tabsNavDesktop">
     <div class="sidebar-brand"><span class="brand-mark">A</span><span class="brand-text">Agency OS</span></div>
-    <button class="tab-btn active" onclick="switchTab('overview')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>Overview</button>
-    <button class="tab-btn" onclick="switchTab('clients')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Clients</button>
-    <button class="tab-btn" onclick="switchTab('projects')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Projects &amp; Tasks</button>
-    <button class="tab-btn" onclick="switchTab('finance')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Finance &amp; Content</button>
+    <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>Overview</button>
+    <button class="tab-btn" data-tab="clients" onclick="switchTab('clients')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Clients</button>
+    <button class="tab-btn" data-tab="projects" onclick="switchTab('projects')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Projects &amp; Tasks</button>
+    <button class="tab-btn" data-tab="finance" onclick="switchTab('finance')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Finance &amp; Content</button>
   </div>
 
   <div class="main">
@@ -146,6 +150,14 @@
           <button class="gear" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings</button>
         </div>
       </div>
+
+      <div class="tabs" id="tabsNav">
+        <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>Overview</button>
+        <button class="tab-btn" data-tab="clients" onclick="switchTab('clients')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Clients</button>
+        <button class="tab-btn" data-tab="projects" onclick="switchTab('projects')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Projects &amp; Tasks</button>
+        <button class="tab-btn" data-tab="finance" onclick="switchTab('finance')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Finance &amp; Content</button>
+      </div>
+
       <div class="note" id="noteText">
         Connect your own Notion databases below to see your real numbers here. Until then, this shows nothing —
         it never displays anyone else's data.
@@ -1509,9 +1521,15 @@ async function extractMeetingTasks() {
 
     resultBox.innerHTML = `Created ${createdCount} task${createdCount === 1 ? '' : 's'}:<br>` + createdNames.map(n => '• ' + esc(n)).join('<br>');
     resultBox.style.display = 'block';
+    const resultMessageHtml = resultBox.innerHTML;
     notesEl.value = '';
     showToast(`✓ ${createdCount} task${createdCount === 1 ? '' : 's'} created from meeting notes`);
-    fetchAndRender();
+    await fetchAndRender();
+    const freshResultBox = document.getElementById('meetingResultBox');
+    if (freshResultBox) {
+      freshResultBox.innerHTML = resultMessageHtml;
+      freshResultBox.style.display = 'block';
+    }
   } catch (err) {
     alert('Could not extract tasks (' + err.message + ').');
   } finally {
@@ -1573,9 +1591,9 @@ function switchTab(name) {
     const el = document.getElementById('tab-' + n);
     if (el) el.classList.toggle('hidden', n !== name);
   });
-  const buttons = document.querySelectorAll('.tab-btn');
-  const idx = TAB_NAMES.indexOf(name);
-  buttons.forEach((btn, i) => btn.classList.toggle('active', i === idx));
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === name);
+  });
 }
 
 function renderDashboard(data) {
@@ -1928,7 +1946,7 @@ function renderDashboard(data) {
   document.getElementById('tab-clients').innerHTML = clientsHtml;
   document.getElementById('tab-projects').innerHTML = projectsHtml;
   document.getElementById('tab-finance').innerHTML = financeHtml;
-  document.getElementById('tabsNav').style.display = 'flex';
+  document.body.classList.add('is-connected');
 }
 
 async function fetchAndRender() {
@@ -1941,7 +1959,7 @@ async function fetchAndRender() {
     badge.className = 'badge off';
     note.textContent = 'Connect your own Notion databases below to see your real numbers here. Until then, this shows nothing — it never displays anyone else\'s data.';
     TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
-    document.getElementById('tabsNav').style.display = 'none';
+    document.body.classList.remove('is-connected');
     return;
   }
 
@@ -1974,7 +1992,7 @@ async function fetchAndRender() {
     badge.className = 'badge off';
     note.textContent = 'Could not load your data (' + err.message + '). Check your token and database IDs in Settings.';
     TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
-    document.getElementById('tabsNav').style.display = 'none';
+    document.body.classList.remove('is-connected');
   }
 }
 
