@@ -132,6 +132,24 @@
   .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
   .panel-head h2 { font-family: 'Cairo', sans-serif; font-weight: 700; font-size: 13.5px; letter-spacing: 0.1px; color: var(--text); margin-bottom: 0; display: flex; align-items: center; }
 
+  .table-header { display: flex; align-items: center; justify-content: space-between; padding: 0 0 8px; margin-bottom: 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-faint); font-weight: 700; }
+
+  .search-input { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 8px 12px; color: var(--text); font-size: 12.5px; font-family: 'Tajawal', sans-serif; margin-bottom: 12px; transition: border-color 0.15s ease; }
+  .search-input:focus { outline: none; border-color: var(--gold); }
+  .search-input::placeholder { color: var(--text-faint); }
+
+  .skeleton-block {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    border-radius: var(--radius);
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+  .skeleton-row-group { display: flex; flex-direction: column; gap: 8px; }
+  @keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
   .add-btn {
     background: rgba(232,194,92,0.09);
     border: 1px solid rgba(232,194,92,0.3);
@@ -171,6 +189,46 @@
   .chart-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 34px 20px; color: var(--text-faint); font-size: 12.5px; text-align: center; line-height: 1.5; }
   .chart-empty svg { width: 32px; height: 32px; opacity: 0.3; }
 
+  .hero-panel {
+    background: linear-gradient(165deg, var(--surface) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px 18px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-md);
+    animation: card-in 0.5s cubic-bezier(.2,.8,.2,1) backwards;
+  }
+  .hero-top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+  .hero-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-faint); font-weight: 700; }
+  .hero-value { font-family: 'Cairo', sans-serif; font-weight: 900; font-size: 40px; letter-spacing: -0.8px; color: var(--text); line-height: 1.05; font-variant-numeric: tabular-nums; margin: 2px 0 14px; }
+  @media (min-width: 640px) { .hero-value { font-size: 48px; } }
+  @media (min-width: 1500px) { .hero-value { font-size: 56px; } }
+  .hero-delta { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; }
+  .hero-delta.up { background: rgba(52,211,153,0.12); color: var(--green); }
+  .hero-delta.down { background: rgba(248,113,113,0.12); color: var(--red); }
+
+  .stat-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 22px; }
+  @media (min-width: 640px) { .stat-row { grid-template-columns: repeat(4, 1fr); gap: 12px; } }
+  .stat-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 15px;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+    animation: card-in 0.5s cubic-bezier(.2,.8,.2,1) backwards;
+  }
+  .stat-chip:nth-child(1) { animation-delay: 0.04s; }
+  .stat-chip:nth-child(2) { animation-delay: 0.08s; }
+  .stat-chip:nth-child(3) { animation-delay: 0.12s; }
+  .stat-chip:nth-child(4) { animation-delay: 0.16s; }
+  .stat-chip:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+  .stat-chip .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-faint); font-weight: 700; margin-bottom: 6px; }
+  .stat-chip .stat-value { font-family: 'Cairo', sans-serif; font-size: 19px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+  .stat-chip.alert-red .stat-value { color: var(--red); }
+  .stat-chip.alert-red { border-color: rgba(248,113,113,0.28); }
+  .stat-chip.alert-amber .stat-value { color: var(--amber); }
+  .stat-chip.alert-amber { border-color: rgba(245,192,68,0.28); }
+
   .edit-btn { background: none; border: none; color: var(--text-dim); font-size: 13px; cursor: pointer; padding: 3px 6px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; transition: color 0.15s ease, background 0.15s ease; }
   .edit-btn:hover { color: var(--gold); background: rgba(232,194,92,0.08); }
   .del-btn { background: none; border: none; color: var(--text-dim); font-size: 13px; cursor: pointer; padding: 3px 6px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; transition: color 0.15s ease, background 0.15s ease; }
@@ -179,7 +237,7 @@
   .hi { width: 14px; height: 14px; vertical-align: -2px; margin-right: 7px; flex-shrink: 0; color: var(--text-faint); }
   .ri { width: 12px; height: 12px; vertical-align: -1px; margin-right: 4px; flex-shrink: 0; }
 
-  .avatar { width: 25px; height: 25px; border-radius: 50%; border: 1px solid; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; font-family: 'Cairo', sans-serif; flex-shrink: 0; margin-right: 10px; }
+  .avatar { width: 25px; height: 25px; border-radius: 50%; border: 1px solid rgba(232,194,92,0.3); background: rgba(232,194,92,0.1); color: var(--gold-soft); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; font-family: 'Cairo', sans-serif; flex-shrink: 0; margin-right: 10px; }
 
   .badge-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.1px; padding: 3.5px 9px 3.5px 7px; border-radius: 999px; white-space: nowrap; }
   .badge-pill .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
@@ -608,15 +666,8 @@ function initials(name) {
   if (!parts.length) return '?';
   return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
 }
-function avatarColor(name) {
-  let hash = 0;
-  const s = name || '';
-  for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 function avatarHtml(name) {
-  const c = avatarColor(name);
-  return `<span class="avatar" style="background:${c}22;color:${c};border-color:${c}55;">${esc(initials(name))}</span>`;
+  return `<span class="avatar">${esc(initials(name))}</span>`;
 }
 function badgePill(text, tone) {
   return `<span class="badge-pill ${tone}"><span class="badge-dot"></span>${esc(text)}</span>`;
@@ -1515,6 +1566,28 @@ async function saveContentEntry() {
   }
 }
 
+function computeRevenueMomDelta(financePages) {
+  const entries = Object.values(financePages);
+  const byMonth = {};
+  entries.forEach(f => {
+    const props = f.properties || {};
+    const type = selectName(props['Type']);
+    const status = selectName(props['Invoice Status']);
+    const dateStr = (props['Date'] && props['Date'].date && props['Date'].date.start) || '';
+    if (type !== 'Income' || status !== 'Paid' || !dateStr) return;
+    const month = dateStr.slice(0, 7);
+    const amt = numberVal(props['Amount']);
+    byMonth[month] = (byMonth[month] || 0) + amt;
+  });
+  const months = Object.keys(byMonth).sort();
+  if (months.length < 2) return null;
+  const last = byMonth[months[months.length - 1]];
+  const prev = byMonth[months[months.length - 2]];
+  if (!prev) return null;
+  const pct = ((last - prev) / prev) * 100;
+  return { pct, up: pct >= 0 };
+}
+
 function buildRevenueChartSvg(financePages) {
   const entries = Object.values(financePages);
   const byMonth = {};
@@ -1759,6 +1832,31 @@ async function repurposeContent(pageId) {
 
 const TAB_NAMES = ['overview', 'clients', 'projects', 'finance'];
 
+function filterPanelRows(inputEl, listId) {
+  const query = inputEl.value.trim().toLowerCase();
+  const list = document.getElementById(listId);
+  if (!list) return;
+  const rows = list.querySelectorAll(':scope > .line');
+  let visibleCount = 0;
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    const match = !query || text.includes(query);
+    row.style.display = match ? '' : 'none';
+    if (match) visibleCount++;
+  });
+  let noMatchEl = list.querySelector('.no-match-msg');
+  if (visibleCount === 0 && query) {
+    if (!noMatchEl) {
+      noMatchEl = document.createElement('div');
+      noMatchEl.className = 'empty no-match-msg';
+      noMatchEl.innerHTML = `<span>No results for "${esc(inputEl.value.trim())}"</span>`;
+      list.appendChild(noMatchEl);
+    }
+  } else if (noMatchEl) {
+    noMatchEl.remove();
+  }
+}
+
 function switchTab(name) {
   TAB_NAMES.forEach(n => {
     const el = document.getElementById('tab-' + n);
@@ -1901,16 +1999,16 @@ function renderDashboard(data) {
 
   let extraCards = '';
   if (hasProjects || hasTasks) {
-    extraCards += `<div class="card red"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div class="label">Overdue</div><div class="value red">${overdueItems.length}</div></div>`;
+    extraCards += `<div class="stat-chip${overdueItems.length > 0 ? ' alert-red' : ''}"><div class="stat-label">Overdue</div><div class="stat-value">${overdueItems.length}</div></div>`;
   }
   if (hasProjects) {
-    extraCards += `<div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></div><div class="label">Active Projects</div><div class="value">${activeProjectsCount}</div></div>`;
+    extraCards += `<div class="stat-chip"><div class="stat-label">Active Projects</div><div class="stat-value">${activeProjectsCount}</div></div>`;
   }
   if (hasTasks) {
-    extraCards += `<div class="card gold"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><div class="label">Tasks Due This Week</div><div class="value gold">${tasksDueThisWeek}</div></div>`;
+    extraCards += `<div class="stat-chip${tasksDueThisWeek > 0 ? ' alert-amber' : ''}"><div class="stat-label">Tasks Due This Week</div><div class="stat-value">${tasksDueThisWeek}</div></div>`;
   }
   if (hasContent) {
-    extraCards += `<div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div><div class="label">Content in Pipeline</div><div class="value">${contentInPipeline}</div></div>`;
+    extraCards += `<div class="stat-chip"><div class="stat-label">Content in Pipeline</div><div class="stat-value">${contentInPipeline}</div></div>`;
   }
 
   let deadlinesPanel = '';
@@ -1959,6 +2057,7 @@ function renderDashboard(data) {
           <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Projects</h2>
           <button class="add-btn" onclick="openProjectModal()">+ Add Project</button>
         </div>
+        <div class="table-header"><span>Project</span><span>Status</span></div>
         ${projectRows}
       </div>
     `;
@@ -1986,7 +2085,9 @@ function renderDashboard(data) {
           <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>Tasks</h2>
           <button class="add-btn" onclick="openTaskModal()">+ Add Task</button>
         </div>
-        ${taskRows}
+        <input type="text" class="search-input" placeholder="Search tasks…" oninput="filterPanelRows(this, 'taskList')">
+        <div class="table-header"><span>Task</span><span>Status</span></div>
+        <div id="taskList">${taskRows}</div>
       </div>
     `;
   }
@@ -2016,7 +2117,9 @@ function renderDashboard(data) {
           <button class="add-btn" onclick="openFinanceModal()">+ Add Entry</button>
         </span>
       </div>
-      ${financeRows}
+      <input type="text" class="search-input" placeholder="Search finance entries…" oninput="filterPanelRows(this, 'financeList')">
+      <div class="table-header"><span>Entry</span><span>Amount</span></div>
+      <div id="financeList">${financeRows}</div>
       <div id="financialInsightsBox" style="display:none; margin-top:10px; padding:10px; background:#0F1729; border:1px solid #23304F; border-radius:8px; font-size:12px; line-height:1.6; color:#C7CEDE; white-space:pre-wrap;"></div>
     </div>
   `;
@@ -2044,32 +2147,42 @@ function renderDashboard(data) {
           <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Content Calendar</h2>
           <button class="add-btn" onclick="openContentModal()">+ Add Content</button>
         </div>
+        <div class="table-header"><span>Content</span><span>Status</span></div>
         ${contentRows}
       </div>
     `;
   }
 
   const revenueChartSvg = buildRevenueChartSvg(lastFinancePages);
+  const momDelta = computeRevenueMomDelta(lastFinancePages);
+  const momDeltaHtml = momDelta
+    ? `<span class="hero-delta ${momDelta.up ? 'up' : 'down'}">${momDelta.up ? '▲' : '▼'} ${Math.abs(momDelta.pct).toFixed(1)}% vs last month</span>`
+    : '';
 
   const overviewHtml = `
-    <div class="panel chart-panel" style="margin-bottom:16px;">
-      <div class="panel-head">
-        <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Revenue</h2>
-        <span class="chart-total">${revenue.toLocaleString() !== '0' ? '$' + revenue.toLocaleString() + ' total paid' : ''}</span>
+    <div class="hero-panel">
+      <div class="hero-top">
+        <span class="hero-label">Revenue (Paid)</span>
+        ${momDeltaHtml}
       </div>
+      <div class="hero-value">$${revenue.toLocaleString()}</div>
       ${revenueChartSvg}
     </div>
-    <div class="grid">
-      <div class="card green"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div><div class="label">Revenue (Paid)</div><div class="value green">$${revenue.toLocaleString()}</div></div>
-      <div class="card red"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div class="label">Overdue Invoices</div><div class="value red">$${overdue.toLocaleString()}</div></div>
-      <div class="card"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div><div class="label">Active Clients</div><div class="value">${activeClients.length}</div></div>
-      <div class="card gold"><div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div><div class="label">Needs Attention</div><div class="value gold">${needsAttention.length}</div></div>
+    <div class="stat-row">
+      <div class="stat-chip${overdue > 0 ? ' alert-red' : ''}"><div class="stat-label">Overdue Invoices</div><div class="stat-value">$${overdue.toLocaleString()}</div></div>
+      <div class="stat-chip"><div class="stat-label">Active Clients</div><div class="stat-value">${activeClients.length}</div></div>
+      <div class="stat-chip${needsAttention.length > 0 ? ' alert-amber' : ''}"><div class="stat-label">Needs Attention</div><div class="stat-value">${needsAttention.length}</div></div>
       ${extraCards}
     </div>
-    <div class="note" style="margin-top:6px;">This is your real data, pulled live from your own Notion workspace just now. Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
+    <div class="note" style="margin-top:-8px;">This is your real data, pulled live from your own Notion workspace just now. Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
   `;
 
   const clientsHtml = `
+    <div class="stat-row" style="margin-bottom:14px;">
+      <div class="stat-chip"><div class="stat-label">Total Clients</div><div class="stat-value">${clients.length}</div></div>
+      <div class="stat-chip"><div class="stat-label">Active</div><div class="stat-value">${activeClients.length}</div></div>
+      <div class="stat-chip${needsAttention.length > 0 ? ' alert-amber' : ''}"><div class="stat-label">Needs Attention</div><div class="stat-value">${needsAttention.length}</div></div>
+    </div>
     <div class="panel" style="margin-bottom:14px;">
       <div class="panel-head">
         <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"></rect><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"></path><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="15" y2="16"></line></svg>Client Intake</h2>
@@ -2086,13 +2199,16 @@ function renderDashboard(data) {
             <button class="add-btn" onclick="openClientModal()">+ Add Client</button>
           </span>
         </div>
-        ${healthRows}
+        <input type="text" class="search-input" placeholder="Search clients…" oninput="filterPanelRows(this, 'healthList')">
+        <div class="table-header"><span>Client</span><span>Health</span></div>
+        <div id="healthList">${healthRows}</div>
       </div>
       <div class="panel">
         <div class="panel-head">
           <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"></path><circle cx="19" cy="8" r="3"></circle></svg>Team Workload</h2>
           <button class="add-btn" onclick="openTeamModal()">+ Add Member</button>
         </div>
+        <div class="table-header"><span>Member</span><span>Workload</span></div>
         ${teamRows}
       </div>
     </div>
@@ -2113,6 +2229,11 @@ function renderDashboard(data) {
   `;
 
   const projectsHtml = `
+    <div class="stat-row" style="margin-bottom:14px;">
+      <div class="stat-chip${overdueItems.length > 0 ? ' alert-red' : ''}"><div class="stat-label">Overdue</div><div class="stat-value">${overdueItems.length}</div></div>
+      ${hasProjects ? `<div class="stat-chip"><div class="stat-label">Active Projects</div><div class="stat-value">${activeProjectsCount}</div></div>` : ''}
+      ${hasTasks ? `<div class="stat-chip${tasksDueThisWeek > 0 ? ' alert-amber' : ''}"><div class="stat-label">Tasks Due This Week</div><div class="stat-value">${tasksDueThisWeek}</div></div>` : ''}
+    </div>
     ${deadlinesPanel}
     ${projectsPanel}
     ${tasksPanel}
@@ -2120,6 +2241,11 @@ function renderDashboard(data) {
   `;
 
   const financeHtml = `
+    <div class="stat-row" style="margin-bottom:14px;">
+      <div class="stat-chip"><div class="stat-label">Revenue (Paid)</div><div class="stat-value">$${revenue.toLocaleString()}</div></div>
+      <div class="stat-chip${overdue > 0 ? ' alert-red' : ''}"><div class="stat-label">Overdue</div><div class="stat-value">$${overdue.toLocaleString()}</div></div>
+      ${hasContent ? `<div class="stat-chip"><div class="stat-label">Content in Pipeline</div><div class="stat-value">${contentInPipeline}</div></div>` : ''}
+    </div>
     ${financePanel}
     ${contentPanel}
   `;
@@ -2147,6 +2273,21 @@ async function fetchAndRender() {
 
   badge.innerHTML = '<span class="live-dot"></span>Connecting…';
   badge.className = 'badge off';
+  const activeTabName = TAB_NAMES.find(n => {
+    const el = document.getElementById('tab-' + n);
+    return el && !el.classList.contains('hidden');
+  }) || 'overview';
+  const skeletonEl = document.getElementById('tab-' + activeTabName);
+  if (skeletonEl) {
+    skeletonEl.innerHTML = `
+      <div class="skeleton-block" style="height:150px;margin-bottom:14px;"></div>
+      <div class="skeleton-row-group">
+        <div class="skeleton-block" style="height:44px;"></div>
+        <div class="skeleton-block" style="height:44px;"></div>
+        <div class="skeleton-block" style="height:44px;"></div>
+      </div>
+    `;
+  }
 
   try {
     const res = await fetch('/api/notion-data', {
