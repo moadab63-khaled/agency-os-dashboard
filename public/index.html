@@ -66,6 +66,18 @@
   .badge.off { background: rgba(232,194,92,0.08); border-color: rgba(232,194,92,0.3); color: var(--gold); }
   .badge.off .live-dot { background: var(--gold); }
   .badge.off .live-dot::after { background: var(--gold); animation: none; opacity: 0; }
+  .badge.demo { background: rgba(90,169,230,0.1); border-color: rgba(90,169,230,0.35); color: #7EB8E8; }
+  .badge.demo .live-dot { background: #7EB8E8; }
+  .badge.demo .live-dot::after { background: #7EB8E8; animation: none; opacity: 0; }
+
+  .demo-btn { background: rgba(90,169,230,0.1); border: 1px solid rgba(90,169,230,0.35); color: #7EB8E8; border-radius: 10px; padding: 8px 15px; font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease; }
+  .demo-btn:hover { border-color: #7EB8E8; background: rgba(90,169,230,0.16); transform: translateY(-1px); }
+
+  .demo-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: rgba(90,169,230,0.08); border: 1px solid rgba(90,169,230,0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; font-size: 12.5px; color: #B8D4EE; }
+  .demo-banner.hidden { display: none; }
+  .demo-banner strong { color: #7EB8E8; }
+  .demo-banner button { background: #7EB8E8; color: #0F1729; border: none; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+  .demo-banner button:hover { background: #9AC8ED; }
   @keyframes pulse-ring {
     0% { transform: scale(0.7); opacity: 0.5; }
     100% { transform: scale(2.2); opacity: 0; }
@@ -311,6 +323,7 @@
         <h1>Agency OS — Live Command Center</h1>
         <div style="display:flex; gap:8px; align-items:center;">
           <span id="statusBadge" class="badge off">Not connected</span>
+          <button class="demo-btn" id="demoBtn" onclick="loadDemoData()">👀 See Demo Data</button>
           <button class="gear" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings</button>
         </div>
       </div>
@@ -325,6 +338,11 @@
       <div class="note" id="noteText">
         Connect your own Notion databases below to see your real numbers here. Until then, this shows nothing —
         it never displays anyone else's data.
+      </div>
+
+      <div class="demo-banner hidden" id="demoBanner">
+        <span>👀 <strong>Demo Mode</strong> — you're viewing sample data. Nothing here is real or saved.</span>
+        <button onclick="exitDemoMode()">Exit Demo</button>
       </div>
 
       <div id="dashboardArea">
@@ -620,6 +638,114 @@
 
 <script>
 const STORAGE_KEY = 'agencyOsDashboardConfig';
+let isDemoMode = false;
+
+function demoGuard() {
+  if (isDemoMode) {
+    alert('This is demo data. Connect your own Notion workspace in Settings to save real changes.');
+    return true;
+  }
+  return false;
+}
+
+const DEMO_DATA = {
+  clients: { results: [
+    { id: 'demo-client-1', properties: {
+      'Name': { title: [{ plain_text: 'Brightline Studio' }] },
+      'Email': { email: 'hello@brightline.co' },
+      'Status': { select: { name: 'Active' } },
+      'Finance': { relation: [{ id: 'demo-fin-1' }, { id: 'demo-fin-2' }] },
+      'Projects': { relation: [{ id: 'demo-proj-1' }] },
+      'Health Score': { number: 95 }, 'Health Status': { select: { name: 'Healthy' } }
+    }},
+    { id: 'demo-client-2', properties: {
+      'Name': { title: [{ plain_text: 'Northwind Retail' }] },
+      'Email': { email: 'ops@northwind.example' },
+      'Status': { select: { name: 'Active' } },
+      'Finance': { relation: [{ id: 'demo-fin-3' }] },
+      'Projects': { relation: [{ id: 'demo-proj-2' }] },
+      'Health Score': { number: 55 }, 'Health Status': { select: { name: 'Watch' } }
+    }},
+    { id: 'demo-client-3', properties: {
+      'Name': { title: [{ plain_text: 'Solace Wellness' }] },
+      'Email': { email: 'team@solace.example' },
+      'Status': { select: { name: 'Active' } },
+      'Finance': { relation: [] },
+      'Projects': { relation: [] },
+      'Health Score': { number: 100 }, 'Health Status': { select: { name: 'Healthy' } }
+    }}
+  ]},
+  finance: { results: [
+    { id: 'demo-fin-1', properties: {
+      'Name': { title: [{ plain_text: 'Brand refresh — final invoice' }] },
+      'Amount': { number: 3200 }, 'Type': { select: { name: 'Income' } },
+      'Invoice Status': { select: { name: 'Paid' } }, 'Date': { date: { start: '2026-07-08' } }
+    }},
+    { id: 'demo-fin-2', properties: {
+      'Name': { title: [{ plain_text: 'Retainer — August' }] },
+      'Amount': { number: 1500 }, 'Type': { select: { name: 'Income' } },
+      'Invoice Status': { select: { name: 'Paid' } }, 'Date': { date: { start: '2026-08-01' } }
+    }},
+    { id: 'demo-fin-3', properties: {
+      'Name': { title: [{ plain_text: 'Website sprint — invoice #4' }] },
+      'Amount': { number: 2100 }, 'Type': { select: { name: 'Income' } },
+      'Invoice Status': { select: { name: 'Overdue' } }, 'Date': { date: { start: '2026-06-15' } }
+    }}
+  ]},
+  team: { results: [
+    { id: 'demo-team-1', properties: { 'Name': { title: [{ plain_text: 'Sara Elhassan' }] }, 'Role': { select: { name: 'Account Manager' } }, 'Current Workload': { number: 3 } }},
+    { id: 'demo-team-2', properties: { 'Name': { title: [{ plain_text: 'Jon Marks' }] }, 'Role': { select: { name: 'Designer' } }, 'Current Workload': { number: 1 } }},
+    { id: 'demo-team-3', properties: { 'Name': { title: [{ plain_text: 'Priya Nair' }] }, 'Role': { select: { name: 'Developer' } }, 'Current Workload': { number: 5 } }}
+  ]},
+  projects: { results: [
+    { id: 'demo-proj-1', properties: {
+      'Name': { title: [{ plain_text: 'Brand Refresh' }] },
+      'Status': { select: { name: 'In Progress' } }, 'Due Date': { date: { start: '2026-09-10' } }
+    }},
+    { id: 'demo-proj-2', properties: {
+      'Name': { title: [{ plain_text: 'Q3 Website Sprint' }] },
+      'Status': { select: { name: 'In Progress' } }, 'Due Date': { date: { start: '2026-08-25' } }
+    }}
+  ]},
+  tasks: { results: [
+    { id: 'demo-task-1', properties: { 'Name': { title: [{ plain_text: 'Send Brightline moodboard v2' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: '2026-08-24' } } }},
+    { id: 'demo-task-2', properties: { 'Name': { title: [{ plain_text: 'Fix Northwind checkout bug' }] }, 'Status': { status: { name: 'In progress' } }, 'Due Date': { date: { start: '2026-08-22' } } }},
+    { id: 'demo-task-3', properties: { 'Name': { title: [{ plain_text: 'Prep Q3 sprint retro' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: '2026-09-01' } } }}
+  ]},
+  content: { results: [
+    { id: 'demo-content-1', properties: {
+      'Name': { title: [{ plain_text: '5 lessons from the Brightline rebrand' }] },
+      'Body': { rich_text: [{ plain_text: 'A behind-the-scenes look at how we approached the Brightline visual identity refresh, from mood boards to final delivery.' }] },
+      'Status': { select: { name: 'Ready to Repurpose' } }
+    }}
+  ]}
+};
+
+function loadDemoData() {
+  isDemoMode = true;
+  document.body.classList.add('is-connected');
+  const badge = document.getElementById('statusBadge');
+  badge.innerHTML = '<span class="live-dot"></span>Demo Mode';
+  badge.className = 'badge demo';
+  document.getElementById('noteText').textContent = "You're viewing sample data — nothing here is real or saved. Connect your own Notion workspace in Settings to see and manage your actual numbers.";
+  const banner = document.getElementById('demoBanner');
+  if (banner) banner.classList.remove('hidden');
+  const demoBtn = document.getElementById('demoBtn');
+  if (demoBtn) demoBtn.style.display = 'none';
+  renderDashboard(DEMO_DATA);
+}
+
+function exitDemoMode() {
+  isDemoMode = false;
+  const banner = document.getElementById('demoBanner');
+  if (banner) banner.classList.add('hidden');
+  fetchAndRender();
+}
+
+function updateDemoBtnVisibility(connected) {
+  const demoBtn = document.getElementById('demoBtn');
+  if (demoBtn) demoBtn.style.display = connected ? 'none' : '';
+}
 
 function loadConfig() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }
@@ -743,6 +869,7 @@ function detectTitleProp(pages) {
 }
 
   async function deleteRecord(pageId) {
+    if (demoGuard()) return;
   if (!confirm('Delete this record? This cannot be undone.')) return;
   const cfg = loadConfig();
   try {
@@ -765,7 +892,7 @@ let isIntakeFlow = false;
 
 function openClientModal(pageId, isIntake) {
   const cfg = loadConfig();
-  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients) {
+  if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients)) {
     alert('Connect your Notion Clients database in Settings first.');
     return;
   }
@@ -838,6 +965,7 @@ function buildClientProperties({ isNew }) {
 }
 
 async function saveClient() {
+  if (demoGuard()) return;
   const cfg = loadConfig();
   const pageId = document.getElementById('clientPageId').value;
   const isNew = !pageId;
@@ -898,6 +1026,7 @@ async function saveClient() {
 }
 
 async function recalculateHealthScores() {
+  if (demoGuard()) return;
   const cfg = loadConfig();
   if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients) {
     alert('Connect your Notion Clients database in Settings first.');
@@ -976,7 +1105,7 @@ let lastProjectPages = {};
 
 function openProjectModal(pageId) {
   const cfg = loadConfig();
-  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.projects) {
+  if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.projects)) {
     alert('Connect your Notion Projects database in Settings first.');
     return;
   }
@@ -1038,6 +1167,7 @@ function buildProjectProperties({ isNew }) {
 }
 
 async function saveProject() {
+  if (demoGuard()) return;
   const cfg = loadConfig();
   const pageId = document.getElementById('projectPageId').value;
   const isNew = !pageId;
@@ -1135,7 +1265,7 @@ function showToast(message) {
 
 function openTaskModal(pageId) {
   const cfg = loadConfig();
-  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.tasks) {
+  if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.tasks)) {
     alert('Connect your Notion Tasks database in Settings first.');
     return;
   }
@@ -1196,6 +1326,7 @@ function buildTaskProperties({ isNew, autoAssignCandidate }) {
 }
 
 async function saveTask() {
+  if (demoGuard()) return;
   const cfg = loadConfig();
   const pageId = document.getElementById('taskPageId').value;
   const isNew = !pageId;
@@ -1247,7 +1378,7 @@ let financeTitleProp = null;
 
 function openFinanceModal(pageId) {
   const cfg = loadConfig();
-  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.finance) {
+  if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.finance)) {
     alert('Connect your Notion Finance database in Settings first.');
     return;
   }
@@ -1311,6 +1442,7 @@ function buildFinanceProperties({ isNew }) {
 }
 
 async function saveFinance() {
+  if (demoGuard()) return;
   const cfg = loadConfig();
   const pageId = document.getElementById('financePageId').value;
   const isNew = !pageId;
@@ -1357,7 +1489,7 @@ let teamTitleProp = null;
 
 function openTeamModal(pageId) {
   const cfg = loadConfig();
-  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.team) {
+  if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.team)) {
     alert('Connect your Notion Team database in Settings first.');
     return;
   }
@@ -1415,6 +1547,7 @@ function buildTeamProperties({ isNew }) {
 }
 
 async function saveTeamEntry() {
+  if (demoGuard()) return;
   const cfg = loadConfig();
   const pageId = document.getElementById('teamPageId').value;
   const isNew = !pageId;
@@ -1461,7 +1594,7 @@ let contentTitleProp = null;
 
 function openContentModal(pageId) {
   const cfg = loadConfig();
-  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.content) {
+  if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.content)) {
     alert('Connect your Notion Content Calendar database in Settings first.');
     return;
   }
@@ -1525,6 +1658,7 @@ function buildContentProperties({ isNew }) {
 }
 
 async function saveContentEntry() {
+  if (demoGuard()) return;
   const cfg = loadConfig();
   const pageId = document.getElementById('contentPageId').value;
   const isNew = !pageId;
@@ -1678,6 +1812,7 @@ function computeFinanceStats() {
 }
 
 async function generateFinancialInsights() {
+  if (demoGuard()) return;
   const entries = Object.values(lastFinancePages);
   if (!entries.length) {
     showToast('No finance entries to analyze.');
@@ -1707,6 +1842,7 @@ async function generateFinancialInsights() {
 }
 
 async function extractMeetingTasks() {
+  if (demoGuard()) return;
   const cfg = loadConfig();
   if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.tasks) {
     alert('Connect your Notion Tasks database in Settings first.');
@@ -1784,6 +1920,7 @@ async function extractMeetingTasks() {
 }
 
 async function repurposeContent(pageId) {
+  if (demoGuard()) return;
   const page = lastContentPages[pageId];
   if (!page) return;
   const props = page.properties || {};
@@ -2268,8 +2405,10 @@ async function fetchAndRender() {
     note.textContent = 'Connect your own Notion databases below to see your real numbers here. Until then, this shows nothing — it never displays anyone else\'s data.';
     TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
     document.body.classList.remove('is-connected');
+    updateDemoBtnVisibility(false);
     return;
   }
+  updateDemoBtnVisibility(true);
 
   badge.innerHTML = '<span class="live-dot"></span>Connecting…';
   badge.className = 'badge off';
@@ -2316,6 +2455,7 @@ async function fetchAndRender() {
     note.textContent = 'Could not load your data (' + err.message + '). Check your token and database IDs in Settings.';
     TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
     document.body.classList.remove('is-connected');
+    updateDemoBtnVisibility(false);
   }
 }
 
