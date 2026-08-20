@@ -89,6 +89,11 @@
 
   .note { font-size: 12.5px; color: var(--text-dim); margin-bottom: 22px; line-height: 1.55; }
 
+  .prop-warning-banner { background: rgba(245,192,68,0.08); border: 1px solid rgba(245,192,68,0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 18px; font-size: 12.5px; color: #E8D9AE; line-height: 1.55; }
+  .prop-warning-banner strong { color: var(--amber); }
+  .prop-warning-banner ul { margin: 6px 0 0; padding-left: 18px; }
+  .prop-warning-banner li { margin-bottom: 3px; }
+
   .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 22px; }
   @media (min-width: 640px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
   @media (min-width: 980px) { .grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
@@ -849,13 +854,52 @@ function richText(p) { return p && p.rich_text && p.rich_text[0] ? p.rich_text[0
 function dateVal(p) { return p && p.date && p.date.start ? new Date(p.date.start) : null; }
 function dateStr(p) { return (p && p.date && p.date.start) || ''; }
 
-const STATUS_NAMES = ['Status'];
+const STATUS_NAMES = ['Status', 'Stage', 'State'];
 const NAME_NAMES = ['Name', 'Title'];
 const DUE_DATE_NAMES = ['Due Date', 'Due', 'Deadline'];
+const INVOICE_STATUS_NAMES = ['Invoice Status', 'Payment Status', 'Status'];
+const HEALTH_STATUS_NAMES = ['Health Status', 'Client Health', 'Health'];
+const TYPE_NAMES = ['Type', 'Category'];
+const AMOUNT_NAMES = ['Amount', 'Value', 'Price'];
+const FINANCE_DATE_NAMES = ['Date', 'Invoice Date', 'Payment Date'];
+const WORKLOAD_NAMES = ['Current Workload', 'Workload'];
+const BODY_NAMES = ['Body', 'Content', 'Draft'];
+const CLIENT_FINANCE_RELATION_NAMES = ['Finance', 'Invoices', 'Related Finance'];
+const CLIENT_PROJECTS_RELATION_NAMES = ['Projects', 'Related Projects'];
 const DONE_VALUES = ['done', 'completed', 'closed', 'published', 'posted', 'live', 'archived', 'cancelled', 'churned', 'delivered'];
 
 function isDoneLike(status) {
   return !!status && DONE_VALUES.includes(status.toLowerCase());
+}
+
+// Checks whether an expected property (by any of its accepted name variants) is
+// actually present on at least one record of each non-empty database. If a
+// database has records but none of them have a matching property under any
+// known alias, that's a real schema mismatch worth surfacing to the buyer —
+// silent $0s/wrong numbers are worse than a visible warning.
+function detectMissingProperties(datasets) {
+  const warnings = [];
+  datasets.forEach(ds => {
+    if (!ds.pages || !ds.pages.length) return;
+    ds.checks.forEach(check => {
+      const resolved = ds.pages.some(page => findProp(page.properties, check.candidates) !== undefined);
+      if (!resolved) {
+        warnings.push({ db: ds.label, prop: check.propLabel, candidates: check.candidates });
+      }
+    });
+  });
+  return warnings;
+}
+
+function propertyWarningBannerHtml(warnings) {
+  if (!warnings || !warnings.length) return '';
+  const items = warnings.map(w =>
+    `<li>Your <strong>${esc(w.db)}</strong> database is missing a <strong>${esc(w.prop)}</strong> property (looked for: ${w.candidates.map(esc).join(', ')}) — related numbers may be inaccurate.</li>`
+  ).join('');
+  return `<div class="prop-warning-banner">
+    <strong>⚠️ Some numbers may be inaccurate — check your database columns:</strong>
+    <ul>${items}</ul>
+  </div>`;
 }
 
 function detectTitleProp(pages) {
@@ -1051,22 +1095,22 @@ async function recalculateHealthScores() {
       const client = lastClientPages[clientId];
       const props = client.properties || {};
 
-      const financeRelations = (props['Finance'] && props['Finance'].relation) || [];
+      const financeRelations = (findProp(props, CLIENT_FINANCE_RELATION_NAMES) || {}).relation || [];
       const overdueInvoices = financeRelations.filter(rel => {
         const financePage = lastFinancePages[rel.id];
         if (!financePage) return false;
-        const status = selectName((financePage.properties || {})['Invoice Status']);
+        const status = selectName(findProp(financePage.properties || {}, INVOICE_STATUS_NAMES));
         return status === 'Overdue';
       }).length;
 
-      const projectRelations = (props['Projects'] && props['Projects'].relation) || [];
+      const projectRelations = (findProp(props, CLIENT_PROJECTS_RELATION_NAMES) || {}).relation || [];
       const overdueProjects = projectRelations.filter(rel => {
         const projectPage = lastProjectPages[rel.id];
         if (!projectPage) return false;
         const pProps = projectPage.properties || {};
-        const status = selectName(pProps['Status']);
+        const status = selectName(findProp(pProps, STATUS_NAMES));
         if (status === 'Completed') return false;
-        const due = dateVal(pProps['Due Date']);
+        const due = dateVal(findProp(pProps, DUE_DATE_NAMES));
         return due && due < now;
       }).length;
 
@@ -1218,7 +1262,7 @@ function pickAutoAssignee() {
   const members = Object.keys(lastTeamPages).map(id => {
     const props = lastTeamPages[id].properties || {};
     const titleProp = teamTitleProp && props[teamTitleProp] ? props[teamTitleProp] : findProp(props, NAME_NAMES);
-    const baseWorkload = numberVal(props['Current Workload']);
+    const baseWorkload = numberVal(findProp(props, WORKLOAD_NAMES));
     return {
       id,
       name: titleText(titleProp) || 'Unnamed',
@@ -1705,12 +1749,13 @@ function computeRevenueMomDelta(financePages) {
   const byMonth = {};
   entries.forEach(f => {
     const props = f.properties || {};
-    const type = selectName(props['Type']);
-    const status = selectName(props['Invoice Status']);
-    const dateStr = (props['Date'] && props['Date'].date && props['Date'].date.start) || '';
+    const type = selectName(findProp(props, TYPE_NAMES));
+    const status = selectName(findProp(props, INVOICE_STATUS_NAMES));
+    const dateProp = findProp(props, FINANCE_DATE_NAMES);
+    const dateStr = (dateProp && dateProp.date && dateProp.date.start) || '';
     if (type !== 'Income' || status !== 'Paid' || !dateStr) return;
     const month = dateStr.slice(0, 7);
-    const amt = numberVal(props['Amount']);
+    const amt = numberVal(findProp(props, AMOUNT_NAMES));
     byMonth[month] = (byMonth[month] || 0) + amt;
   });
   const months = Object.keys(byMonth).sort();
@@ -1727,12 +1772,13 @@ function buildRevenueChartSvg(financePages) {
   const byMonth = {};
   entries.forEach(f => {
     const props = f.properties || {};
-    const type = selectName(props['Type']);
-    const status = selectName(props['Invoice Status']);
-    const dateStr = (props['Date'] && props['Date'].date && props['Date'].date.start) || '';
+    const type = selectName(findProp(props, TYPE_NAMES));
+    const status = selectName(findProp(props, INVOICE_STATUS_NAMES));
+    const dateProp = findProp(props, FINANCE_DATE_NAMES);
+    const dateStr = (dateProp && dateProp.date && dateProp.date.start) || '';
     if (type !== 'Income' || status !== 'Paid' || !dateStr) return;
     const month = dateStr.slice(0, 7);
-    const amt = numberVal(props['Amount']);
+    const amt = numberVal(findProp(props, AMOUNT_NAMES));
     byMonth[month] = (byMonth[month] || 0) + amt;
   });
 
@@ -1795,9 +1841,9 @@ function computeFinanceStats() {
   let paidCount = 0, pendingCount = 0, overdueCount = 0;
   entries.forEach(f => {
     const props = f.properties || {};
-    const type = selectName(props['Type']);
-    const status = selectName(props['Invoice Status']);
-    const amt = numberVal(props['Amount']);
+    const type = selectName(findProp(props, TYPE_NAMES));
+    const status = selectName(findProp(props, INVOICE_STATUS_NAMES));
+    const amt = numberVal(findProp(props, AMOUNT_NAMES));
     if (type === 'Income' && status === 'Paid') { paidRevenue += amt; paidCount++; }
     if (status === 'Pending') { pendingAmount += amt; pendingCount++; }
     if (status === 'Overdue') { overdueAmount += amt; overdueCount++; }
@@ -1926,7 +1972,7 @@ async function repurposeContent(pageId) {
   const props = page.properties || {};
   const titleProp = contentTitleProp && props[contentTitleProp] ? props[contentTitleProp] : findProp(props, NAME_NAMES);
   const title = titleText(titleProp);
-  const body = richText(props['Body']);
+  const body = richText(findProp(props, BODY_NAMES));
 
   const btn = document.getElementById('repurpose-' + pageId);
   const originalText = btn ? btn.textContent : '';
@@ -2032,24 +2078,52 @@ function renderDashboard(data) {
 
   const getProp = (page, name) => (page.properties || {})[name];
 
+  const propertyWarnings = detectMissingProperties([
+    { label: 'Finance', pages: finance, checks: [
+        { propLabel: 'Type', candidates: TYPE_NAMES },
+        { propLabel: 'Invoice Status', candidates: INVOICE_STATUS_NAMES },
+        { propLabel: 'Amount', candidates: AMOUNT_NAMES },
+        { propLabel: 'Date', candidates: FINANCE_DATE_NAMES },
+      ] },
+    { label: 'Clients', pages: clients, checks: [
+        { propLabel: 'Status', candidates: STATUS_NAMES },
+        { propLabel: 'Health Status', candidates: HEALTH_STATUS_NAMES },
+      ] },
+    { label: 'Projects', pages: projects, checks: [
+        { propLabel: 'Status', candidates: STATUS_NAMES },
+        { propLabel: 'Due Date', candidates: DUE_DATE_NAMES },
+      ] },
+    { label: 'Tasks', pages: tasks, checks: [
+        { propLabel: 'Status', candidates: STATUS_NAMES },
+        { propLabel: 'Due Date', candidates: DUE_DATE_NAMES },
+      ] },
+    { label: 'Content', pages: content, checks: [
+        { propLabel: 'Status', candidates: STATUS_NAMES },
+        { propLabel: 'Body', candidates: BODY_NAMES },
+      ] },
+    { label: 'Team', pages: team, checks: [
+        { propLabel: 'Current Workload', candidates: WORKLOAD_NAMES },
+      ] },
+  ]);
+
   let revenue = 0, overdue = 0;
   finance.forEach(f => {
-    const type = selectName(getProp(f, 'Type'));
-    const status = selectName(getProp(f, 'Invoice Status'));
-    const amt = numberVal(getProp(f, 'Amount'));
+    const type = selectName(findProp(f.properties, TYPE_NAMES));
+    const status = selectName(findProp(f.properties, INVOICE_STATUS_NAMES));
+    const amt = numberVal(findProp(f.properties, AMOUNT_NAMES));
     if (type === 'Income' && status === 'Paid') revenue += amt;
     if (status === 'Overdue') overdue += amt;
   });
 
-  const activeClients = clients.filter(c => selectName(getProp(c, 'Status')) === 'Active');
+  const activeClients = clients.filter(c => selectName(findProp(c.properties, STATUS_NAMES)) === 'Active');
   const needsAttention = clients.filter(c => {
-    const h = selectName(getProp(c, 'Health Status'));
+    const h = selectName(findProp(c.properties, HEALTH_STATUS_NAMES));
     return h === 'At Risk' || h === 'Watch';
   });
 
   const healthRows = clients.slice(0, 6).map(c => {
-    const name = titleText(getProp(c, 'Name')) || 'Unnamed client';
-    const status = selectName(getProp(c, 'Health Status')) || '—';
+    const name = titleText(findProp(c.properties, NAME_NAMES)) || 'Unnamed client';
+    const status = selectName(findProp(c.properties, HEALTH_STATUS_NAMES)) || '—';
     return `<div class="line">
       <span class="line-left">${avatarHtml(name)}<span>${esc(name)}</span></span>
       <span style="display:flex;align-items:center;gap:8px;">
@@ -2060,12 +2134,12 @@ function renderDashboard(data) {
     </div>`;
   }).join('') || '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"></path></svg><span>No clients found in this database yet.</span></div>';
 
-  const maxWorkload = Math.max(1, ...team.map(t => numberVal(getProp(t, 'Current Workload'))));
+  const maxWorkload = Math.max(1, ...team.map(t => numberVal(findProp(t.properties, WORKLOAD_NAMES))));
   const teamRows = team.slice(0, 6).map(t => {
     const titleProp = teamTitleProp && t.properties[teamTitleProp] ? t.properties[teamTitleProp] : findProp(t.properties, NAME_NAMES);
     const name = titleText(titleProp) || 'Unnamed';
     const role = selectName(getProp(t, 'Role')) || '';
-    const wl = numberVal(getProp(t, 'Current Workload'));
+    const wl = numberVal(findProp(t.properties, WORKLOAD_NAMES));
     const pct = Math.round((wl / maxWorkload) * 100);
     return `<div class="line">
       <span class="line-left">${avatarHtml(name)}<span>${esc(name)}${role ? '<span style="color:#5C647C;"> — ' + esc(role) + '</span>' : ''}</span></span>
@@ -2232,8 +2306,8 @@ function renderDashboard(data) {
   const financeRows = finance.slice(0, 6).map(f => {
     const titleProp = financeTitleProp && f.properties[financeTitleProp] ? f.properties[financeTitleProp] : findProp(f.properties, NAME_NAMES);
     const name = titleText(titleProp) || 'Unnamed entry';
-    const status = selectName(getProp(f, 'Invoice Status')) || '—';
-    const amt = numberVal(getProp(f, 'Amount'));
+    const status = selectName(findProp(f.properties, INVOICE_STATUS_NAMES)) || '—';
+    const amt = numberVal(findProp(f.properties, AMOUNT_NAMES));
     return `<div class="line">
       <span class="line-left"><span>${esc(name)}</span></span>
       <span style="display:flex;align-items:center;gap:8px;">
@@ -2266,7 +2340,7 @@ function renderDashboard(data) {
     const contentRows = content.slice(0, 6).map(c => {
       const titleProp = contentTitleProp && c.properties[contentTitleProp] ? c.properties[contentTitleProp] : findProp(c.properties, NAME_NAMES);
       const name = titleText(titleProp) || 'Unnamed content';
-      const status = selectName(getProp(c, 'Status')) || '—';
+      const status = selectName(findProp(c.properties, STATUS_NAMES)) || '—';
       return `<div class="line">
         <span class="line-left"><span>${esc(name)}</span></span>
         <span style="display:flex;align-items:center;gap:8px;">
@@ -2297,6 +2371,7 @@ function renderDashboard(data) {
     : '';
 
   const overviewHtml = `
+    ${propertyWarningBannerHtml(propertyWarnings)}
     <div class="hero-panel">
       <div class="hero-top">
         <span class="hero-label">Revenue (Paid)</span>
