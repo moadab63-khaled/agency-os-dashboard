@@ -155,7 +155,7 @@
   }
   .panel:hover { border-color: var(--border-strong); }
 
-  .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
   .panel-head h2 { font-family: 'Cairo', sans-serif; font-weight: 700; font-size: 13.5px; letter-spacing: 0.1px; color: var(--text); margin-bottom: 0; display: flex; align-items: center; }
 
   .table-header { display: flex; align-items: center; justify-content: space-between; padding: 0 0 8px; margin-bottom: 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-faint); font-weight: 700; }
@@ -972,6 +972,62 @@ function detectTitleProp(pages) {
     }
   }
   return null;
+}
+
+// CSV export — reads from the already-loaded full record maps (lastClientPages /
+// lastFinancePages), not just the 6 rows shown in the UI, so buyers get their
+// complete dataset out. Uses the same findProp()/alias system as the rest of
+// the dashboard so a renamed column doesn't silently produce a blank CSV column.
+function csvEscape(value) {
+  const s = (value === null || value === undefined) ? '' : String(value);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function downloadCsv(filename, rows) {
+  const csvContent = rows.map(row => row.map(csvEscape).join(',')).join('\r\n');
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportClientsCsv() {
+  const rows = [['Name', 'Company', 'Email', 'Status', 'Health Status']];
+  Object.values(lastClientPages).forEach(page => {
+    const props = page.properties || {};
+    rows.push([
+      titleText(findProp(props, NAME_NAMES)),
+      richText(props['Company']),
+      (props['Email'] && props['Email'].email) || '',
+      anyStatusName(findProp(props, STATUS_NAMES)) || '',
+      anyStatusName(findProp(props, HEALTH_STATUS_NAMES)) || ''
+    ]);
+  });
+  if (rows.length === 1) { alert('No client records to export yet.'); return; }
+  downloadCsv('clients-export.csv', rows);
+}
+
+function exportFinanceCsv() {
+  const rows = [['Name', 'Amount', 'Date', 'Type', 'Invoice Status']];
+  Object.values(lastFinancePages).forEach(page => {
+    const props = page.properties || {};
+    const titleProp = (financeTitleProp && props[financeTitleProp]) || findProp(props, NAME_NAMES);
+    rows.push([
+      titleText(titleProp),
+      numberVal(findProp(props, AMOUNT_NAMES)),
+      dateStr(findProp(props, FINANCE_DATE_NAMES)),
+      selectName(findProp(props, TYPE_NAMES)) || '',
+      anyStatusName(findProp(props, INVOICE_STATUS_NAMES)) || ''
+    ]);
+  });
+  if (rows.length === 1) { alert('No finance records to export yet.'); return; }
+  downloadCsv('finance-export.csv', rows);
 }
 
   async function deleteRecord(pageId) {
@@ -2387,6 +2443,7 @@ function renderDashboard(data) {
         <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Finance</h2>
         <span style="display:flex; gap:6px;">
           <button class="add-btn" onclick="generateFinancialInsights()" id="insightsBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a6 6 0 0 0-4 10.47c.47.46.8 1.05.93 1.7L9 15h6l.07-.83c.13-.65.46-1.24.93-1.7A6 6 0 0 0 12 2Z"></path></svg>Insights</button>
+          <button class="add-btn" onclick="exportFinanceCsv()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Export CSV</button>
           <button class="add-btn" onclick="openFinanceModal()">+ Add Entry</button>
         </span>
       </div>
@@ -2470,6 +2527,7 @@ function renderDashboard(data) {
           <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Client Health</h2>
           <span style="display:flex; gap:6px;">
             <button class="add-btn" onclick="recalculateHealthScores()" id="recalcBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Recalculate</button>
+            <button class="add-btn" onclick="exportClientsCsv()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Export CSV</button>
             <button class="add-btn" onclick="openClientModal()">+ Add Client</button>
           </span>
         </div>
