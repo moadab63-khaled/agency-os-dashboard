@@ -2311,7 +2311,7 @@ function renderDashboard(data) {
       <div class="stat-chip${needsAttention.length > 0 ? ' alert-amber' : ''}"><div class="stat-label">Needs Attention</div><div class="stat-value">${needsAttention.length}</div></div>
       ${extraCards}
     </div>
-    <div class="note" style="margin-top:-8px;">This is your real data, pulled live from your own Notion workspace just now. Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
+    <div class="note" style="margin-top:-8px;">${isDemoMode ? 'This is sample demo data for preview purposes only — nothing here is real or saved.' : 'This is your real data, pulled live from your own Notion workspace just now.'} Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
   `;
 
   const clientsHtml = `
