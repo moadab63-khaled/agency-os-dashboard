@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agency OS — Live Command Center</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#090D18">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<!-- iOS doesn't honor the Web App Manifest for Add to Home Screen, so these are set separately -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Agency OS">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Tajawal:wght@400;500;700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -368,7 +376,10 @@
 
       <div class="app-footer">
         <span>Agency OS <span id="footerVersion"></span></span>
-        <button class="version-link" onclick="openChangelog()">What's new?</button>
+        <span style="display:flex; gap:12px; align-items:center;">
+          <button class="version-link hidden" id="installBtn" onclick="installApp()">📲 Install App</button>
+          <button class="version-link" onclick="openChangelog()">What's new?</button>
+        </span>
       </div>
     </div>
   </div>
@@ -2656,6 +2667,41 @@ async function fetchAndRender() {
 
 renderFooterVersion();
 fetchAndRender();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {
+      // Installability is a nice-to-have — if registration fails (e.g. served
+      // over plain http during local testing), the dashboard works exactly
+      // the same either way.
+    });
+  });
+}
+
+// Chrome/Edge/Android fire this when the app becomes installable; iOS Safari
+// never fires it (there's no programmatic install prompt on iOS — people add
+// it via the Share menu instead), so the button simply never appears there.
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.classList.remove('hidden');
+});
+
+async function installApp() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.classList.add('hidden');
+}
+
+window.addEventListener('appinstalled', () => {
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.classList.add('hidden');
+});
 </script>
 </body>
 </html>
