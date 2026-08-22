@@ -846,11 +846,24 @@ function openModal() {
 function closeModal() { document.getElementById('overlay').classList.add('hidden'); }
 
 function saveAndLoad() {
+  const token = document.getElementById('inToken').value.trim();
+  const clients = document.getElementById('inClients').value.trim();
+  const finance = document.getElementById('inFinance').value.trim();
+
+  // Token, Clients DB, and Finance DB are the three fields this modal itself
+  // labels as required (Team/Projects/Tasks/Content are explicitly "Optional").
+  // Saving an empty config silently used to just leave the dashboard on
+  // "Not connected" with no explanation of why — tell the buyer what's missing.
+  if (!token || !clients || !finance) {
+    alert('Please fill in the Notion integration token, Clients database ID, and Finance database ID — these three are required to connect.');
+    return;
+  }
+
   const cfg = {
-    token: document.getElementById('inToken').value.trim(),
+    token,
     databases: {
-      clients: document.getElementById('inClients').value.trim(),
-      finance: document.getElementById('inFinance').value.trim(),
+      clients,
+      finance,
       team: document.getElementById('inTeam').value.trim(),
       projects: document.getElementById('inProjects').value.trim(),
       tasks: document.getElementById('inTasks').value.trim(),
@@ -921,10 +934,31 @@ function findProp(properties, candidates) {
 function selectName(p) { return p && p.select ? p.select.name : null; }
 function statusTypeName(p) { return p && p.status ? p.status.name : null; }
 function anyStatusName(p) { return selectName(p) || statusTypeName(p); }
+// Case/whitespace-insensitive status-value comparison. Notion select values are
+// typed freely by the buyer, so a data-affecting comparison (counts, sums) must
+// not silently return 0/wrong-total just because someone typed "active" instead
+// of "Active". Cosmetic-only badge-color helpers are left as-is (worst case
+// there is a neutral-colored dot, not a wrong number).
+function eqCI(value, target) {
+  return typeof value === 'string' && value.trim().toLowerCase() === target.toLowerCase();
+}
 function numberVal(p) { return p && typeof p.number === 'number' ? p.number : 0; }
 function titleText(p) { return p && p.title && p.title[0] ? p.title[0].plain_text : ''; }
 function richText(p) { return p && p.rich_text && p.rich_text[0] ? p.rich_text[0].plain_text : ''; }
-function dateVal(p) { return p && p.date && p.date.start ? new Date(p.date.start) : null; }
+// Every Due-Date field this dashboard writes comes from an <input type="date">
+// (plain "YYYY-MM-DD", no time component) — but `new Date("YYYY-MM-DD")`
+// parses that as UTC midnight. Comparing that raw instant against a visitor's
+// local "now" silently shifts the effective due date back by one calendar
+// day for anyone west of UTC. A due date is a calendar day, not a precise
+// instant, so re-anchor it to local midnight using the same Y/M/D the buyer
+// entered, regardless of the viewer's timezone.
+function dateVal(p) {
+  const s = p && p.date && p.date.start;
+  if (!s) return null;
+  const parsed = new Date(s);
+  if (isNaN(parsed)) return null;
+  return new Date(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate());
+}
 function dateStr(p) { return (p && p.date && p.date.start) || ''; }
 
 const STATUS_NAMES = ['Status', 'Stage', 'State'];
@@ -950,6 +984,14 @@ function isDoneLike(status) {
 // database has records but none of them have a matching property under any
 // known alias, that's a real schema mismatch worth surfacing to the buyer —
 // silent $0s/wrong numbers are worse than a visible warning.
+//
+// Optionally also checks that at least one of a known set of expected VALUES
+// (e.g. "Active", "Paid") actually appears among the records for that
+// property — the property column can exist while every value in it has been
+// renamed to something the dashboard's calculations don't recognize (e.g. a
+// Notion select option renamed from "Active" to "Ongoing"). Case/whitespace
+// differences alone are already handled by eqCI() at the calculation sites,
+// so this only fires for a genuine renamed-option mismatch, not a typo.
 function detectMissingProperties(datasets) {
   const warnings = [];
   datasets.forEach(ds => {
@@ -958,6 +1000,22 @@ function detectMissingProperties(datasets) {
       const resolved = ds.pages.some(page => findProp(page.properties, check.candidates) !== undefined);
       if (!resolved) {
         warnings.push({ db: ds.label, prop: check.propLabel, candidates: check.candidates });
+        return;
+      }
+      if (check.expectedValues && check.expectedValues.length) {
+        const anyValueMatches = ds.pages.some(page => {
+          const val = selectName(findProp(page.properties, check.candidates));
+          return val && check.expectedValues.some(ev => eqCI(val, ev));
+        });
+        if (!anyValueMatches) {
+          warnings.push({
+            db: ds.label,
+            prop: check.propLabel,
+            candidates: check.candidates,
+            valueMismatch: true,
+            expectedValues: check.expectedValues
+          });
+        }
       }
     });
   });
@@ -966,8 +1024,9 @@ function detectMissingProperties(datasets) {
 
 function propertyWarningBannerHtml(warnings) {
   if (!warnings || !warnings.length) return '';
-  const items = warnings.map(w =>
-    `<li>Your <strong>${esc(w.db)}</strong> database is missing a <strong>${esc(w.prop)}</strong> property (looked for: ${w.candidates.map(esc).join(', ')}) — related numbers may be inaccurate.</li>`
+  const items = warnings.map(w => w.valueMismatch
+    ? `<li>Your <strong>${esc(w.db)}</strong> database's <strong>${esc(w.prop)}</strong> column exists, but none of its values match what this dashboard expects (looked for: ${w.expectedValues.map(esc).join(', ')}) — did you rename an option in Notion? Related numbers may be inaccurate.</li>`
+    : `<li>Your <strong>${esc(w.db)}</strong> database is missing a <strong>${esc(w.prop)}</strong> property (looked for: ${w.candidates.map(esc).join(', ')}) — related numbers may be inaccurate.</li>`
   ).join('');
   return `<div class="prop-warning-banner">
     <strong>⚠️ Some numbers may be inaccurate — check your database columns:</strong>
@@ -1082,8 +1141,8 @@ function openClientModal(pageId, isIntake) {
     document.getElementById('cName').value = titleText(props['Name']) || '';
     document.getElementById('cCompany').value = richText(props['Company']) || '';
     document.getElementById('cEmail').value = (props['Email'] && props['Email'].email) || '';
-    document.getElementById('cStatus').value = selectName(props['Status']) || '';
-    document.getElementById('cHealthStatus').value = selectName(props['Health Status']) || '';
+    ensureSelectHasValue(document.getElementById('cStatus'), selectName(props['Status']));
+    ensureSelectHasValue(document.getElementById('cHealthStatus'), selectName(props['Health Status']));
   } else if (isIntake) {
     document.getElementById('clientModalTitle').textContent = '📋 New Client Intake';
     document.getElementById('clientModalDesc').textContent = "Fill this in while you're on the call with your new prospect. It saves straight to your Notion Clients database as a Lead.";
@@ -1098,7 +1157,11 @@ function openClientModal(pageId, isIntake) {
     document.getElementById('cName').value = '';
     document.getElementById('cCompany').value = '';
     document.getElementById('cEmail').value = '';
-    document.getElementById('cStatus').value = 'Lead';
+    // Deliberately left blank (not defaulted to 'Lead' like the Intake flow):
+    // a client added here is usually an existing/active relationship, not a
+    // fresh prospect from a call, so the buyer must consciously pick a status
+    // rather than silently inheriting Intake's assumption. Enforced in saveClient().
+    document.getElementById('cStatus').value = '';
     document.getElementById('cHealthStatus').value = '';
   }
 
@@ -1128,7 +1191,10 @@ function buildClientProperties({ isNew }) {
   }
   if (status) {
     props['Status'] = { select: { name: status } };
-  } else if (isNew) {
+  } else if (isNew && isIntakeFlow) {
+    // Intake is the one flow where defaulting to 'Lead' is correct (a fresh
+    // prospect from a call). The regular "Add client" flow must NOT silently
+    // fall back here — saveClient() blocks that case before this is reached.
     props['Status'] = { select: { name: 'Lead' } };
   }
   if (healthStatus) {
@@ -1149,6 +1215,15 @@ async function saveClient() {
 
   if (isNew && !name) {
     errorEl.textContent = 'Name is required.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  // Regular "Add client" (not Intake) must not silently save with no status —
+  // buildClientProperties() no longer defaults it to 'Lead' for this flow, so
+  // block here instead, forcing a conscious choice.
+  if (isNew && !isIntakeFlow && !document.getElementById('cStatus').value) {
+    errorEl.textContent = 'Please select a status.';
     errorEl.style.display = 'block';
     return;
   }
@@ -1217,8 +1292,12 @@ async function recalculateHealthScores() {
       return;
     }
 
-    const now = new Date();
+    // Local midnight, to match dateVal()'s calendar-day-normalized due dates —
+    // otherwise a project due "today" could misfire as overdue depending on
+    // the time of day this runs.
+    const now = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
     let updatedCount = 0;
+    let failedCount = 0;
 
     for (const clientId of clientIds) {
       const client = lastClientPages[clientId];
@@ -1229,7 +1308,7 @@ async function recalculateHealthScores() {
         const financePage = lastFinancePages[rel.id];
         if (!financePage) return false;
         const status = selectName(findProp(financePage.properties || {}, INVOICE_STATUS_NAMES));
-        return status === 'Overdue';
+        return eqCI(status, 'Overdue');
       }).length;
 
       const projectRelations = (findProp(props, CLIENT_PROJECTS_RELATION_NAMES) || {}).relation || [];
@@ -1238,7 +1317,7 @@ async function recalculateHealthScores() {
         if (!projectPage) return false;
         const pProps = projectPage.properties || {};
         const status = selectName(findProp(pProps, STATUS_NAMES));
-        if (status === 'Completed') return false;
+        if (eqCI(status, 'Completed')) return false;
         const due = dateVal(findProp(pProps, DUE_DATE_NAMES));
         return due && due < now;
       }).length;
@@ -1247,25 +1326,35 @@ async function recalculateHealthScores() {
       score = Math.max(0, Math.min(100, score));
       const healthStatus = score >= 80 ? 'Healthy' : score >= 50 ? 'Watch' : 'At Risk';
 
-      const res = await fetch('/api/notion-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: cfg.token,
-          action: 'update',
-          pageId: clientId,
-          properties: {
-            'Health Score': { number: score },
-            'Health Status': { select: { name: healthStatus } }
-          }
-        })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.error) throw new Error(data.error || 'Update failed for a client');
-      updatedCount++;
+      // Recalculate every client independently — one client's update failing
+      // (bad relation, transient API error) must not abort the whole batch
+      // and hide how many others already succeeded.
+      if (btn) { btn.textContent = `Calculating… (${updatedCount + failedCount + 1}/${clientIds.length})`; }
+      try {
+        const res = await fetch('/api/notion-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: cfg.token,
+            action: 'update',
+            pageId: clientId,
+            properties: {
+              'Health Score': { number: score },
+              'Health Status': { select: { name: healthStatus } }
+            }
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.error) throw new Error(data.error || 'Update failed');
+        updatedCount++;
+      } catch (e) {
+        failedCount++;
+      }
     }
 
-    showToast(`✓ Recalculated ${updatedCount} client${updatedCount === 1 ? '' : 's'}`);
+    showToast(failedCount
+      ? `⚠️ Recalculated ${updatedCount} of ${clientIds.length} — ${failedCount} failed`
+      : `✓ Recalculated ${updatedCount} client${updatedCount === 1 ? '' : 's'}`);
     fetchAndRender();
   } catch (err) {
     alert('Could not recalculate (' + err.message + ').');
@@ -1294,7 +1383,7 @@ function openProjectModal(pageId) {
     document.getElementById('pDeliverables').value = richText(props['Deliverables']) || '';
     document.getElementById('pStartDate').value = dateStr(props['Start Date']);
     document.getElementById('pDueDate').value = dateStr(props['Due Date']);
-    document.getElementById('pStatus').value = selectName(props['Status']) || '';
+    ensureSelectHasValue(document.getElementById('pStatus'), selectName(props['Status']));
   } else {
     document.getElementById('projectModalTitle').textContent = 'Add project';
     document.getElementById('pName').value = '';
@@ -1422,6 +1511,25 @@ async function markTaskAssigned(cfg, candidate) {
   }
 }
 
+// A value stored in Notion for a select/status property can be anything the
+// buyer typed there — it isn't limited to this dashboard's fixed <option>
+// list. Setting a <select>'s .value to a string with no matching <option>
+// silently fails (the dropdown falls back to its first entry, "— unchanged —"),
+// which would mislead the person editing into thinking no status is set when
+// one actually is. This injects a temporary option so the real value is both
+// visible and preserved if they save without touching the field.
+function ensureSelectHasValue(selectEl, value) {
+  if (!value) return;
+  const hasMatch = Array.from(selectEl.options).some(o => o.value === value);
+  if (!hasMatch) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = value + ' (from Notion)';
+    selectEl.appendChild(opt);
+  }
+  selectEl.value = value;
+}
+
 function showToast(message) {
   let toast = document.getElementById('toast');
   if (!toast) {
@@ -1454,7 +1562,7 @@ function openTaskModal(pageId) {
     const titleProp = taskTitleProp && props[taskTitleProp] ? props[taskTitleProp] : findProp(props, NAME_NAMES);
     document.getElementById('tName').value = titleText(titleProp) || '';
     document.getElementById('tDueDate').value = dateStr(findProp(props, DUE_DATE_NAMES));
-    document.getElementById('tStatus').value = anyStatusName(findProp(props, STATUS_NAMES)) || '';
+    ensureSelectHasValue(document.getElementById('tStatus'), anyStatusName(findProp(props, STATUS_NAMES)));
     infoEl.textContent = '';
   } else {
     document.getElementById('taskModalTitle').textContent = 'Add task';
@@ -1567,8 +1675,8 @@ function openFinanceModal(pageId) {
     document.getElementById('fName').value = titleText(titleProp) || '';
     document.getElementById('fAmount').value = numberVal(props['Amount']) || '';
     document.getElementById('fDate').value = dateStr(props['Date']);
-    document.getElementById('fType').value = selectName(props['Type']) || '';
-    document.getElementById('fInvoiceStatus').value = selectName(props['Invoice Status']) || '';
+    ensureSelectHasValue(document.getElementById('fType'), selectName(props['Type']));
+    ensureSelectHasValue(document.getElementById('fInvoiceStatus'), selectName(props['Invoice Status']));
   } else {
     document.getElementById('financeModalTitle').textContent = 'Add finance entry';
     document.getElementById('fName').value = '';
@@ -1676,7 +1784,7 @@ function openTeamModal(pageId) {
     document.getElementById('teamModalTitle').textContent = 'Edit team member';
     const titleProp = teamTitleProp && props[teamTitleProp] ? props[teamTitleProp] : findProp(props, NAME_NAMES);
     document.getElementById('teamName').value = titleText(titleProp) || '';
-    document.getElementById('teamRole').value = selectName(props['Role']) || '';
+    ensureSelectHasValue(document.getElementById('teamRole'), selectName(props['Role']));
     document.getElementById('teamWorkload').value = numberVal(props['Current Workload']) || '';
     const skillTags = (props['Skill Tags'] && props['Skill Tags'].multi_select) || [];
     document.getElementById('teamSkillTags').value = skillTags.map(s => s.name).join(', ');
@@ -1784,7 +1892,7 @@ function openContentModal(pageId) {
     document.getElementById('ctBody').value = richText(props['Body']) || '';
     document.getElementById('ctPublishDate').value = dateStr(props['Publish Date']);
     document.getElementById('ctRepurposed').value = richText(props['Repurposed Output']) || '';
-    document.getElementById('ctStatus').value = selectName(props['Status']) || '';
+    ensureSelectHasValue(document.getElementById('ctStatus'), selectName(props['Status']));
   } else {
     document.getElementById('contentModalTitle').textContent = 'Add content';
     document.getElementById('ctTitle').value = '';
@@ -1882,7 +1990,7 @@ function computeRevenueMomDelta(financePages) {
     const status = selectName(findProp(props, INVOICE_STATUS_NAMES));
     const dateProp = findProp(props, FINANCE_DATE_NAMES);
     const dateStr = (dateProp && dateProp.date && dateProp.date.start) || '';
-    if (type !== 'Income' || status !== 'Paid' || !dateStr) return;
+    if (!eqCI(type, 'Income') || !eqCI(status, 'Paid') || !dateStr) return;
     const month = dateStr.slice(0, 7);
     const amt = numberVal(findProp(props, AMOUNT_NAMES));
     byMonth[month] = (byMonth[month] || 0) + amt;
@@ -1905,7 +2013,7 @@ function buildRevenueChartSvg(financePages) {
     const status = selectName(findProp(props, INVOICE_STATUS_NAMES));
     const dateProp = findProp(props, FINANCE_DATE_NAMES);
     const dateStr = (dateProp && dateProp.date && dateProp.date.start) || '';
-    if (type !== 'Income' || status !== 'Paid' || !dateStr) return;
+    if (!eqCI(type, 'Income') || !eqCI(status, 'Paid') || !dateStr) return;
     const month = dateStr.slice(0, 7);
     const amt = numberVal(findProp(props, AMOUNT_NAMES));
     byMonth[month] = (byMonth[month] || 0) + amt;
@@ -1973,10 +2081,13 @@ function computeFinanceStats() {
     const type = selectName(findProp(props, TYPE_NAMES));
     const status = selectName(findProp(props, INVOICE_STATUS_NAMES));
     const amt = numberVal(findProp(props, AMOUNT_NAMES));
-    if (type === 'Income' && status === 'Paid') { paidRevenue += amt; paidCount++; }
-    if (status === 'Pending') { pendingAmount += amt; pendingCount++; }
-    if (status === 'Overdue') { overdueAmount += amt; overdueCount++; }
-    if (type === 'Expense') expenseTotal += amt;
+    if (eqCI(type, 'Income') && eqCI(status, 'Paid')) { paidRevenue += amt; paidCount++; }
+    if (eqCI(status, 'Pending')) { pendingAmount += amt; pendingCount++; }
+    // Same Income-only rule as the Overview "Overdue Invoices" stat — this
+    // feeds the AI's "overdue invoices" narrative, so it must mean the same
+    // thing: money owed TO you, not an overdue Expense you owe someone else.
+    if (eqCI(type, 'Income') && eqCI(status, 'Overdue')) { overdueAmount += amt; overdueCount++; }
+    if (eqCI(type, 'Expense')) expenseTotal += amt;
   });
   return {
     paidRevenue, pendingAmount, overdueAmount, expenseTotal,
@@ -2053,6 +2164,7 @@ async function extractMeetingTasks() {
 
     let createdCount = 0;
     const createdNames = [];
+    const failedNames = [];
     for (const taskName of tasks) {
       const candidate = pickAutoAssignee();
       const titleKey = taskTitleProp || 'Name';
@@ -2073,14 +2185,26 @@ async function extractMeetingTasks() {
         createdCount++;
         createdNames.push(taskName);
         if (candidate) await markTaskAssigned(cfg, candidate);
+      } else {
+        // A per-task failure (bad Notion write, transient API error, etc.)
+        // must be visible — silently dropping it from the count would leave
+        // the buyer thinking all extracted tasks were created when some
+        // action items from their meeting notes were actually lost.
+        failedNames.push(taskName);
       }
     }
 
-    resultBox.innerHTML = `Created ${createdCount} task${createdCount === 1 ? '' : 's'}:<br>` + createdNames.map(n => '• ' + esc(n)).join('<br>');
+    let resultHtml = `Created ${createdCount} of ${tasks.length} task${tasks.length === 1 ? '' : 's'}:<br>` + createdNames.map(n => '• ' + esc(n)).join('<br>');
+    if (failedNames.length) {
+      resultHtml += `<br><br><span style="color:#F87171;">⚠️ Failed to create ${failedNames.length}:</span><br>` + failedNames.map(n => '• ' + esc(n)).join('<br>');
+    }
+    resultBox.innerHTML = resultHtml;
     resultBox.style.display = 'block';
     const resultMessageHtml = resultBox.innerHTML;
     notesEl.value = '';
-    showToast(`✓ ${createdCount} task${createdCount === 1 ? '' : 's'} created from meeting notes`);
+    showToast(failedNames.length
+      ? `⚠️ ${createdCount} of ${tasks.length} tasks created — ${failedNames.length} failed`
+      : `✓ ${createdCount} task${createdCount === 1 ? '' : 's'} created from meeting notes`);
     await fetchAndRender();
     const freshResultBox = document.getElementById('meetingResultBox');
     if (freshResultBox) {
@@ -2107,6 +2231,7 @@ async function repurposeContent(pageId) {
   const originalText = btn ? btn.textContent : '';
   if (btn) { btn.textContent = '…'; btn.disabled = true; }
 
+  let aiResult = null;
   try {
     const res = await fetch('/api/notion-data', {
       method: 'POST',
@@ -2115,6 +2240,7 @@ async function repurposeContent(pageId) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) throw new Error(data.error || 'Repurpose failed');
+    aiResult = data.result;
 
     const cfg = loadConfig();
     const updateRes = await fetch('/api/notion-data', {
@@ -2125,7 +2251,7 @@ async function repurposeContent(pageId) {
         action: 'update',
         pageId,
         properties: {
-          'Repurposed Output': { rich_text: [{ text: { content: data.result.slice(0, 2000) } }] },
+          'Repurposed Output': { rich_text: [{ text: { content: aiResult.slice(0, 2000) } }] },
           'Status': { select: { name: 'Ready to Repurpose' } }
         }
       })
@@ -2136,7 +2262,14 @@ async function repurposeContent(pageId) {
     showToast('✓ Content repurposed');
     fetchAndRender();
   } catch (err) {
-    alert('Could not repurpose (' + err.message + ').');
+    // If the AI call already succeeded but the Notion save failed, the
+    // generated text must not just vanish — show it so the buyer can copy
+    // it manually instead of losing the AI output entirely.
+    if (aiResult) {
+      alert('Generated content, but could not save it to Notion (' + err.message + '). Copy it below before closing:\n\n' + aiResult);
+    } else {
+      alert('Could not repurpose (' + err.message + ').');
+    }
   } finally {
     if (btn) { btn.textContent = originalText; btn.disabled = false; }
   }
@@ -2209,14 +2342,14 @@ function renderDashboard(data) {
 
   const propertyWarnings = detectMissingProperties([
     { label: 'Finance', pages: finance, checks: [
-        { propLabel: 'Type', candidates: TYPE_NAMES },
-        { propLabel: 'Invoice Status', candidates: INVOICE_STATUS_NAMES },
+        { propLabel: 'Type', candidates: TYPE_NAMES, expectedValues: ['Income', 'Expense'] },
+        { propLabel: 'Invoice Status', candidates: INVOICE_STATUS_NAMES, expectedValues: ['Paid', 'Pending', 'Overdue'] },
         { propLabel: 'Amount', candidates: AMOUNT_NAMES },
         { propLabel: 'Date', candidates: FINANCE_DATE_NAMES },
       ] },
     { label: 'Clients', pages: clients, checks: [
-        { propLabel: 'Status', candidates: STATUS_NAMES },
-        { propLabel: 'Health Status', candidates: HEALTH_STATUS_NAMES },
+        { propLabel: 'Status', candidates: STATUS_NAMES, expectedValues: ['Lead', 'Active', 'Inactive'] },
+        { propLabel: 'Health Status', candidates: HEALTH_STATUS_NAMES, expectedValues: ['Healthy', 'Watch', 'At Risk'] },
       ] },
     { label: 'Projects', pages: projects, checks: [
         { propLabel: 'Status', candidates: STATUS_NAMES },
@@ -2240,14 +2373,17 @@ function renderDashboard(data) {
     const type = selectName(findProp(f.properties, TYPE_NAMES));
     const status = selectName(findProp(f.properties, INVOICE_STATUS_NAMES));
     const amt = numberVal(findProp(f.properties, AMOUNT_NAMES));
-    if (type === 'Income' && status === 'Paid') revenue += amt;
-    if (status === 'Overdue') overdue += amt;
+    if (eqCI(type, 'Income') && eqCI(status, 'Paid')) revenue += amt;
+    // "Overdue Invoices" is money owed TO you by clients — only Income-type
+    // entries belong here, otherwise an overdue Expense (money you owe someone
+    // else) would silently inflate this client-invoice figure.
+    if (eqCI(type, 'Income') && eqCI(status, 'Overdue')) overdue += amt;
   });
 
-  const activeClients = clients.filter(c => selectName(findProp(c.properties, STATUS_NAMES)) === 'Active');
+  const activeClients = clients.filter(c => eqCI(selectName(findProp(c.properties, STATUS_NAMES)), 'Active'));
   const needsAttention = clients.filter(c => {
     const h = selectName(findProp(c.properties, HEALTH_STATUS_NAMES));
-    return h === 'At Risk' || h === 'Watch';
+    return eqCI(h, 'At Risk') || eqCI(h, 'Watch');
   });
 
   const healthRows = clients.slice(0, 6).map(c => {
@@ -2289,7 +2425,11 @@ function renderDashboard(data) {
     return !isDoneLike(status);
   }).length;
 
-  const now = new Date();
+  // Local midnight, matching dateVal()'s calendar-day-normalized due dates —
+  // otherwise "due this week" / "overdue" boundaries drift by up to a day
+  // depending on the visitor's timezone and the time of day they load this.
+  const todayLocal = new Date();
+  const now = new Date(todayLocal.getFullYear(), todayLocal.getMonth(), todayLocal.getDate());
   const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const tasksDueThisWeek = tasks.filter(t => {
     const status = anyStatusName(findProp(t.properties, STATUS_NAMES));
@@ -2303,8 +2443,14 @@ function renderDashboard(data) {
     return !isDoneLike(status);
   }).length;
 
-  function daysOverdue(due) {
-    const ms = new Date(now).setHours(0,0,0,0) - new Date(due).setHours(0,0,0,0);
+  function daysOverdue(dueDateString) {
+    // Same calendar-day-safe parsing as dateVal() — avoid the UTC-parse then
+    // local-setHours pattern, which silently shifts the date by one day for
+    // negative-UTC-offset timezones.
+    const parsed = new Date(dueDateString);
+    if (isNaN(parsed)) return 0;
+    const dueLocal = new Date(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate());
+    const ms = now.getTime() - dueLocal.getTime();
     return Math.floor(ms / (24 * 60 * 60 * 1000));
   }
 
@@ -2397,8 +2543,9 @@ function renderDashboard(data) {
           <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>Projects</h2>
           <button class="add-btn" onclick="openProjectModal()">+ Add Project</button>
         </div>
+        <input type="text" class="search-input" placeholder="Search projects…" oninput="filterPanelRows(this, 'projectList')">
         <div class="table-header"><span>Project</span><span>Status</span></div>
-        ${projectRows}
+        <div id="projectList">${projectRows}</div>
       </div>
     `;
   }
@@ -2488,8 +2635,9 @@ function renderDashboard(data) {
           <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Content Calendar</h2>
           <button class="add-btn" onclick="openContentModal()">+ Add Content</button>
         </div>
+        <input type="text" class="search-input" placeholder="Search content…" oninput="filterPanelRows(this, 'contentList')">
         <div class="table-header"><span>Content</span><span>Status</span></div>
-        ${contentRows}
+        <div id="contentList">${contentRows}</div>
       </div>
     `;
   }
@@ -2690,7 +2838,15 @@ window.addEventListener('beforeinstallprompt', (event) => {
 });
 
 async function installApp() {
-  if (!deferredInstallPrompt) return;
+  // The Install button is only shown once 'beforeinstallprompt' has already
+  // fired and set this, so this guard should be effectively unreachable in
+  // normal use — but if the browser revokes the prompt in the brief window
+  // between showing the button and the click (seen in some Chrome/Edge
+  // versions), silently doing nothing would look like a broken button.
+  if (!deferredInstallPrompt) {
+    showToast('Install option is no longer available — try refreshing the page.');
+    return;
+  }
   deferredInstallPrompt.prompt();
   await deferredInstallPrompt.userChoice;
   deferredInstallPrompt = null;
