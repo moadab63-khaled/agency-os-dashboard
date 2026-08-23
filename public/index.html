@@ -2847,12 +2847,37 @@ async function fetchAndRender() {
     const data = await res.json().catch(() => ({}));
     if (data.error) throw new Error(data.error);
     if (!res.ok) throw new Error('Request failed: ' + res.status);
-    badge.innerHTML = '<span class="live-dot"></span>Connected — live';
-    badge.className = 'badge';
-
     const dbLabels = { clients: 'Clients', finance: 'Finance', team: 'Team', projects: 'Projects', tasks: 'Tasks', content: 'Content Calendar' };
     const failedDbs = Object.keys(dbLabels).filter(k => data[k] && data[k].error).map(k => dbLabels[k]);
 
+    // Clients and Finance are the two databases this same modal requires to
+    // even save (Team/Projects/Tasks/Content are explicitly "Optional" in
+    // Settings). A bad token fails every database at once; a bad ID fails
+    // just that one. Either way, if a REQUIRED database failed, the buyer
+    // is not actually connected — the badge must not say "live" while
+    // Clients/Finance data is missing or wrong, even though the HTTP
+    // request itself succeeded (the Worker still returns 200 with a
+    // per-database error, not a top-level one, for this case).
+    const REQUIRED_DBS = ['clients', 'finance'];
+    const requiredFailed = REQUIRED_DBS.filter(k => data[k] && data[k].error);
+
+    if (requiredFailed.length) {
+      badge.innerHTML = '<span class="live-dot"></span>Connection error';
+      badge.className = 'badge off';
+      const requiredLabels = requiredFailed.map(k => dbLabels[k]).join(' and ');
+      const firstErr = data[requiredFailed[0]].error;
+      note.textContent = `Could not load your ${requiredLabels} database${requiredFailed.length > 1 ? 's' : ''} — check that your Notion token and the correct database ID${requiredFailed.length > 1 ? 's are' : ' is'} entered in Settings.` + (firstErr ? ` (${firstErr})` : '');
+      TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
+      document.body.classList.remove('is-connected');
+      updateDemoBtnVisibility(false);
+      return;
+    }
+
+    badge.innerHTML = '<span class="live-dot"></span>Connected — live';
+    badge.className = 'badge';
+
+    // Only optional databases (Team/Projects/Tasks/Content) can still be in
+    // failedDbs here, since required failures already returned above.
     if (failedDbs.length) {
       note.textContent = `Showing your live data — but ${failedDbs.join(', ')} could not be loaded right now (temporary Notion error). Everything else is up to date; try reconnecting in a moment for the rest.`;
     } else {
