@@ -394,6 +394,10 @@
     </div>
     <p>Paste your own Notion integration token and database IDs. These are stored only in your browser — never sent anywhere except directly to Notion's API through this page.</p>
 
+    <div class="section-label">Your product key</div>
+    <label>Product key (from your purchase)</label>
+    <input id="inLicenseKey" type="text" placeholder="e.g. AOS-XXXX-XXXX-XXXX">
+
     <label>Notion integration token</label>
     <input id="inToken" type="password" placeholder="secret_...">
 
@@ -419,7 +423,7 @@
 
     <div class="actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" onclick="saveAndLoad()">Save &amp; Connect</button>
+      <button class="btn-save" id="settingsSaveBtn" onclick="saveAndLoad()">Save &amp; Connect</button>
     </div>
     <span class="helplink">Where to find these: see the "Connect Your Live Dashboard" guide included with your purchase.</span>
     <span class="helplink">Dashboard <span id="settingsVersion"></span> — <button class="version-link" onclick="openChangelog()" style="font-size:11px;">what's new?</button></span>
@@ -830,9 +834,35 @@ function loadConfig() {
   catch (e) { return null; }
 }
 
+// Every call to the Worker must carry the buyer's product key so the server
+// can verify it before doing any real work. Wrapping fetch here means the
+// ~15 call sites below don't each need to remember to attach it themselves.
+async function notionFetch(url, options) {
+  const cfg = loadConfig() || {};
+  let body = {};
+  try { body = JSON.parse((options && options.body) || '{}'); } catch (e) {}
+  if (!('licenseKey' in body) || !body.licenseKey) body.licenseKey = cfg.licenseKey || '';
+  return fetch(url, Object.assign({}, options, { body: JSON.stringify(body) }));
+}
+
+async function verifyLicenseKey(licenseKey) {
+  try {
+    const res = await notionFetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'verify-license', licenseKey })
+    });
+    const data = await res.json().catch(() => ({}));
+    return data;
+  } catch (e) {
+    return { valid: false, reason: 'network_error' };
+  }
+}
+
 function openModal() {
   const cfg = loadConfig();
   if (cfg) {
+    document.getElementById('inLicenseKey').value = cfg.licenseKey || '';
     document.getElementById('inToken').value = cfg.token || '';
     document.getElementById('inClients').value = (cfg.databases && cfg.databases.clients) || '';
     document.getElementById('inFinance').value = (cfg.databases && cfg.databases.finance) || '';
@@ -845,10 +875,16 @@ function openModal() {
 }
 function closeModal() { document.getElementById('overlay').classList.add('hidden'); }
 
-function saveAndLoad() {
+async function saveAndLoad() {
+  const licenseKey = document.getElementById('inLicenseKey').value.trim();
   const token = document.getElementById('inToken').value.trim();
   const clients = document.getElementById('inClients').value.trim();
   const finance = document.getElementById('inFinance').value.trim();
+
+  if (!licenseKey) {
+    alert('Please enter your product key. You received this at purchase — check the "Connect Your Live Dashboard" guide if you can\'t find it.');
+    return;
+  }
 
   // Token, Clients DB, and Finance DB are the three fields this modal itself
   // labels as required (Team/Projects/Tasks/Content are explicitly "Optional").
@@ -859,7 +895,27 @@ function saveAndLoad() {
     return;
   }
 
+  const saveBtn = document.getElementById('settingsSaveBtn');
+  const originalLabel = saveBtn ? saveBtn.textContent : '';
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Checking key…'; }
+
+  const licenseResult = await verifyLicenseKey(licenseKey);
+
+  if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+
+  if (!licenseResult.valid) {
+    const reasonMessages = {
+      not_found: 'That product key was not recognized. Double-check it against your purchase confirmation.',
+      revoked: 'This product key is no longer active. Contact support if you believe this is a mistake.',
+      not_configured: 'The dashboard cannot verify keys right now. Please try again shortly.',
+      network_error: 'Could not reach the server to check your key. Check your connection and try again.'
+    };
+    alert(reasonMessages[licenseResult.reason] || 'That product key could not be verified. Please check it and try again.');
+    return;
+  }
+
   const cfg = {
+    licenseKey,
     token,
     databases: {
       clients,
@@ -1105,7 +1161,7 @@ function exportFinanceCsv() {
   if (!confirm('Delete this record? This cannot be undone.')) return;
   const cfg = loadConfig();
   try {
-    const res = await fetch('/api/notion-data', {
+    const res = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: cfg.token, action: 'delete', pageId })
@@ -1252,7 +1308,7 @@ async function saveClient() {
   saveBtn.disabled = true;
 
   try {
-    const res = await fetch('/api/notion-data', {
+    const res = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -1331,7 +1387,7 @@ async function recalculateHealthScores() {
       // and hide how many others already succeeded.
       if (btn) { btn.textContent = `Calculating… (${updatedCount + failedCount + 1}/${clientIds.length})`; }
       try {
-        const res = await fetch('/api/notion-data', {
+        const res = await notionFetch('/api/notion-data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1453,7 +1509,7 @@ async function saveProject() {
   saveBtn.disabled = true;
 
   try {
-    const res = await fetch('/api/notion-data', {
+    const res = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -1495,7 +1551,7 @@ function pickAutoAssignee() {
 async function markTaskAssigned(cfg, candidate) {
   workloadOverrides[candidate.id] = (workloadOverrides[candidate.id] || 0) + 1;
   try {
-    await fetch('/api/notion-data', {
+    await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1632,7 +1688,7 @@ async function saveTask() {
   saveBtn.disabled = true;
 
   try {
-    const res = await fetch('/api/notion-data', {
+    const res = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -1747,7 +1803,7 @@ async function saveFinance() {
   saveBtn.disabled = true;
 
   try {
-    const res = await fetch('/api/notion-data', {
+    const res = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -1852,7 +1908,7 @@ async function saveTeamEntry() {
   saveBtn.disabled = true;
 
   try {
-    const res = await fetch('/api/notion-data', {
+    const res = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -1963,7 +2019,7 @@ async function saveContentEntry() {
   saveBtn.disabled = true;
 
   try {
-    const res = await fetch('/api/notion-data', {
+    const res = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -2111,7 +2167,7 @@ async function generateFinancialInsights() {
 
   try {
     const stats = computeFinanceStats();
-    const res = await fetch('/api/notion-data', {
+    const res = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'financial-insights', stats })
@@ -2147,7 +2203,7 @@ async function extractMeetingTasks() {
   resultBox.style.display = 'none';
 
   try {
-    const res = await fetch('/api/notion-data', {
+    const res = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'meeting-to-action', notes })
@@ -2175,7 +2231,7 @@ async function extractMeetingTasks() {
       if (candidate) {
         properties['Assigned To'] = { relation: [{ id: candidate.id }] };
       }
-      const createRes = await fetch('/api/notion-data', {
+      const createRes = await notionFetch('/api/notion-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: cfg.token, action: 'create', databaseId: cfg.databases.tasks, properties })
@@ -2233,7 +2289,7 @@ async function repurposeContent(pageId) {
 
   let aiResult = null;
   try {
-    const res = await fetch('/api/notion-data', {
+    const res = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'repurpose', title, body })
@@ -2243,7 +2299,7 @@ async function repurposeContent(pageId) {
     aiResult = data.result;
 
     const cfg = loadConfig();
-    const updateRes = await fetch('/api/notion-data', {
+    const updateRes = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2783,7 +2839,7 @@ async function fetchAndRender() {
   }
 
   try {
-    const res = await fetch('/api/notion-data', {
+    const res = await notionFetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cfg)
