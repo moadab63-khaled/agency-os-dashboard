@@ -9,6 +9,12 @@
   "ai": {
     "binding": "AI"
   },
+  "kv_namespaces": [
+    {
+      "binding": "LICENSES",
+      "id": "fb3a645b743749618215cf310d10a610"
+    }
+  ],
   "observability": {
     "enabled": true
   }
