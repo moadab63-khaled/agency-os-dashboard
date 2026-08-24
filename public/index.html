@@ -392,14 +392,14 @@
       <h3>Connect your Notion data</h3>
       <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
     </div>
-    <p>Paste your own Notion integration token and database IDs. These are stored only in your browser — never sent anywhere except directly to Notion's API through this page.</p>
+    <p>Paste your own Notion integration token and database IDs. These are stored only in your browser, and every request is sent through Digital Secrets' Cloudflare Worker (never stored there) to reach Notion's API on your behalf.</p>
 
     <div class="section-label">Your product key</div>
     <label>Product key (from your purchase)</label>
     <input id="inLicenseKey" type="text" placeholder="e.g. AOS-XXXX-XXXX-XXXX">
 
     <label>Notion integration token</label>
-    <input id="inToken" type="text" autocomplete="off" placeholder="secret_...">
+    <input id="inToken" type="password" autocomplete="off" placeholder="secret_...">
 
     <label>Clients database ID</label>
     <input id="inClients" type="text" placeholder="e.g. aed11247939c...">
@@ -2308,7 +2308,7 @@ async function repurposeContent(pageId) {
         pageId,
         properties: {
           'Repurposed Output': { rich_text: [{ text: { content: aiResult.slice(0, 2000) } }] },
-          'Status': { select: { name: 'Ready to Repurpose' } }
+          'Status': { select: { name: 'Repurposed' } }
         }
       })
     });
