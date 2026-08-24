@@ -15,7 +15,7 @@
 </head>
 <body>
   <h1>🗑 Delete a record</h1>
-  <p>Paste the Notion page ID (or full page URL) of the record you want to delete. This uses the token already saved in Settings on the main dashboard.</p>
+  <p>Paste the Notion page ID (or full page URL) of the record you want to delete. This uses the License Key and token already saved in Settings on the main dashboard.</p>
   <input id="pid" placeholder="Page ID or Notion URL">
   <button onclick="doDelete()">Delete record</button>
   <div id="msg"></div>
@@ -29,6 +29,7 @@ async function doDelete() {
   const cfg = JSON.parse(localStorage.getItem('agencyOsDashboardConfig') || 'null');
   const msg = document.getElementById('msg');
   if (!cfg || !cfg.token) { msg.textContent = 'No saved token found — open the main dashboard and connect Settings first.'; return; }
+  if (!cfg.licenseKey) { msg.textContent = 'No saved License Key found — open the main dashboard and connect Settings first.'; return; }
   const pageId = extractId(document.getElementById('pid').value);
   if (!pageId) { msg.textContent = 'Enter a page ID.'; return; }
   if (!confirm('Delete this record? Cannot be undone.')) return;
@@ -37,7 +38,7 @@ async function doDelete() {
     const res = await fetch('/api/notion-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: cfg.token, action: 'delete', pageId })
+      body: JSON.stringify({ token: cfg.token, licenseKey: cfg.licenseKey, action: 'delete', pageId })
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) throw new Error(data.error || 'Failed');
