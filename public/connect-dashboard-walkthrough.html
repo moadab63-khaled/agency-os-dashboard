@@ -363,14 +363,18 @@ const STEPS_BASE = [
   },
   {
     eyebrow: 'Step 5 of 5',
-    url: 'agency-os-dashboard.netlify.app',
+    url: 'agency-os-dashboard.moadab63.workers.dev',
     title: 'Connect your dashboard',
-    narration: (ed) => `Go to agency-os-dashboard.netlify.app, tap Settings, and paste the token plus all database IDs${ed==='agency' ? ' — including Team' : ''}. Then tap Save and Connect.`,
+    narration: (ed) => `Go to agency-os-dashboard.moadab63.workers.dev, tap Settings, and paste your License Key, your token, plus all database IDs${ed==='agency' ? ' — including Team' : ''}. Then tap Save and Connect.`,
     body: (ed) => {
       const dbs = ed === 'agency'
         ? ['Clients','Finance','Team (optional)','Projects','Tasks','Content Calendar']
         : ['Clients','Finance','Projects','Tasks','Content Calendar'];
       return `
+        <div class="mock-field">
+          <div class="mock-label">License Key</div>
+          <div class="mock-input">AOS-XXXX-XXXX-XXXX</div>
+        </div>
         ${dbs.map(d => `
           <div class="mock-field">
             <div class="mock-label">${d} database ID</div>
@@ -383,7 +387,7 @@ const STEPS_BASE = [
   },
   {
     eyebrow: 'Done',
-    url: 'agency-os-dashboard.netlify.app',
+    url: 'agency-os-dashboard.moadab63.workers.dev',
     title: "You're connected — live",
     narration: "That's it — you're connected. Your dashboard now pulls real numbers straight from your own Notion workspace, and updates automatically every time you edit something in Notion. No more setup needed.",
     body: () => `
