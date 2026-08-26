@@ -145,6 +145,12 @@ var DB_NAME_ALIASES = {
   content: ["content calendar", "content", "calendar"]
 };
 
+// Only these two are hard requirements to connect the dashboard at all,
+// matching the settings modal's own "required" fields. Team (Freelancer
+// Edition has none), Projects, Tasks and Content are optional extras --
+// discovery should never fail just because one of those isn't on the page.
+var REQUIRED_DB_KEYS = ["clients", "finance"];
+
 function normalizeNotionId(idOrUrl) {
   if (!idOrUrl || typeof idOrUrl !== "string") return null;
   // Pull out anything that looks like a 32-hex-char Notion ID from a raw ID
@@ -211,7 +217,8 @@ function matchDatabasesToKeys(childDatabases) {
     }
   }
   const missing = Object.keys(DB_NAME_ALIASES).filter((key) => !found[key]);
-  return { found, missing };
+  const missingRequired = REQUIRED_DB_KEYS.filter((key) => !found[key]);
+  return { found, missing, missingRequired };
 }
 __name(matchDatabasesToKeys, "matchDatabasesToKeys");
 
@@ -241,20 +248,23 @@ async function handleDiscoverDatabases(payload, token) {
   }
   if (!childDatabases.length) {
     return json({
-      error: "No databases were found on that page. Make sure you shared the main workspace page (the one containing Team, Clients, Projects, Tasks, Finance and Content Calendar) with your integration -- not a sub-page like Command Center.",
+      error: "No databases were found on that page. Make sure you shared the main workspace page (the one containing Clients, Finance and your other databases) with your integration -- not a sub-page like Command Center.",
       all: []
     }, 404);
   }
-  const { found, missing } = matchDatabasesToKeys(childDatabases);
-  if (missing.length) {
+  const { found, missing, missingRequired } = matchDatabasesToKeys(childDatabases);
+  if (missingRequired.length) {
     return json({
-      error: `Found this page, but could not find: ${missing.join(", ")}. Make sure none of the database names were changed.`,
+      error: `Found this page, but could not find: ${missingRequired.join(", ")}. These are required to connect -- make sure none of the database names were changed.`,
       found,
       missing,
       all: childDatabases
     }, 404);
   }
-  return json({ ok: true, databases: found, all: childDatabases });
+  // Non-required databases (Team, Projects, Tasks, Content) simply come back
+  // absent from `found` if they're not on the page -- e.g. Freelancer Edition
+  // has no Team database. That's expected, not an error.
+  return json({ ok: true, databases: found, missing, all: childDatabases });
 }
 __name(handleDiscoverDatabases, "handleDiscoverDatabases");
 
