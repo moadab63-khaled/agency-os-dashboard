@@ -392,7 +392,7 @@
       <h3>Connect your Notion data</h3>
       <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
     </div>
-    <p>Paste your own Notion integration token and database IDs. These are stored only in your browser, and every request is sent through Digital Secrets' Cloudflare Worker (never stored there) to reach Notion's API on your behalf.</p>
+    <p>Paste your own Notion integration token and one page link — your databases connect automatically. These are stored only in your browser, and every request is sent through Digital Secrets' Cloudflare Worker (never stored there) to reach Notion's API on your behalf.</p>
 
     <div class="section-label">Your product key</div>
     <label>Product key (from your purchase)</label>
@@ -401,25 +401,9 @@
     <label>Notion integration token</label>
     <input id="inToken" type="password" autocomplete="off" placeholder="secret_...">
 
-    <label>Clients database ID</label>
-    <input id="inClients" type="text" placeholder="e.g. aed11247939c...">
-
-    <label>Finance database ID</label>
-    <input id="inFinance" type="text" placeholder="e.g. 0fa11247939c...">
-
-    <div class="section-label">Optional — Agency Edition</div>
-    <label>Team database ID</label>
-    <input id="inTeam" type="text" placeholder="optional, Agency Edition only">
-
-    <div class="section-label">Optional — extra metrics</div>
-    <label>Projects database ID</label>
-    <input id="inProjects" type="text" placeholder="optional — adds Active Projects">
-
-    <label>Tasks database ID</label>
-    <input id="inTasks" type="text" placeholder="optional — adds Tasks Due This Week">
-
-    <label>Content Calendar database ID</label>
-    <input id="inContent" type="text" placeholder="optional — adds Content in Pipeline">
+    <label>Notion page link</label>
+    <input id="inPageLink" type="text" placeholder="Paste the link to your workspace page">
+    <span class="helplink" style="display:block;margin-top:4px;">Share only this one page with your integration — every database on it connects automatically.</span>
 
     <div class="actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
@@ -864,34 +848,39 @@ function openModal() {
   if (cfg) {
     document.getElementById('inLicenseKey').value = cfg.licenseKey || '';
     document.getElementById('inToken').value = cfg.token || '';
-    document.getElementById('inClients').value = (cfg.databases && cfg.databases.clients) || '';
-    document.getElementById('inFinance').value = (cfg.databases && cfg.databases.finance) || '';
-    document.getElementById('inTeam').value = (cfg.databases && cfg.databases.team) || '';
-    document.getElementById('inProjects').value = (cfg.databases && cfg.databases.projects) || '';
-    document.getElementById('inTasks').value = (cfg.databases && cfg.databases.tasks) || '';
-    document.getElementById('inContent').value = (cfg.databases && cfg.databases.content) || '';
+    document.getElementById('inPageLink').value = cfg.pageLink || '';
   }
   document.getElementById('overlay').classList.remove('hidden');
 }
 function closeModal() { document.getElementById('overlay').classList.add('hidden'); }
 
+async function discoverDatabases(token, pageLink, licenseKey) {
+  try {
+    const res = await notionFetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'discover-databases', token, pageUrl: pageLink, licenseKey })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error || `Server error (${res.status})` };
+    return { ok: true, databases: data.databases || {} };
+  } catch (e) {
+    return { ok: false, error: 'Could not reach the server. Check your connection and try again.' };
+  }
+}
+
 async function saveAndLoad() {
   const licenseKey = document.getElementById('inLicenseKey').value.trim();
   const token = document.getElementById('inToken').value.trim();
-  const clients = document.getElementById('inClients').value.trim();
-  const finance = document.getElementById('inFinance').value.trim();
+  const pageLink = document.getElementById('inPageLink').value.trim();
 
   if (!licenseKey) {
     alert('Please enter your product key. You received this at purchase — check the "Connect Your Live Dashboard" guide if you can\'t find it.');
     return;
   }
 
-  // Token, Clients DB, and Finance DB are the three fields this modal itself
-  // labels as required (Team/Projects/Tasks/Content are explicitly "Optional").
-  // Saving an empty config silently used to just leave the dashboard on
-  // "Not connected" with no explanation of why — tell the buyer what's missing.
-  if (!token || !clients || !finance) {
-    alert('Please fill in the Notion integration token, Clients database ID, and Finance database ID — these three are required to connect.');
+  if (!token || !pageLink) {
+    alert('Please fill in your Notion integration token and the page link — both are required to connect.');
     return;
   }
 
@@ -901,9 +890,8 @@ async function saveAndLoad() {
 
   const licenseResult = await verifyLicenseKey(licenseKey);
 
-  if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
-
   if (!licenseResult.valid) {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
     const reasonMessages = {
       not_found: 'That product key was not recognized. Double-check it against your purchase confirmation.',
       revoked: 'This product key is no longer active. Contact support if you believe this is a mistake.',
@@ -914,17 +902,22 @@ async function saveAndLoad() {
     return;
   }
 
+  if (saveBtn) { saveBtn.textContent = 'Connecting to Notion…'; }
+
+  const discovery = await discoverDatabases(token, pageLink, licenseKey);
+
+  if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+
+  if (!discovery.ok) {
+    alert(discovery.error || 'Could not connect to that Notion page. Please check the link and try again.');
+    return;
+  }
+
   const cfg = {
     licenseKey,
     token,
-    databases: {
-      clients,
-      finance,
-      team: document.getElementById('inTeam').value.trim(),
-      projects: document.getElementById('inProjects').value.trim(),
-      tasks: document.getElementById('inTasks').value.trim(),
-      content: document.getElementById('inContent').value.trim(),
-    }
+    pageLink,
+    databases: discovery.databases
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
   closeModal();
@@ -1181,7 +1174,7 @@ let isIntakeFlow = false;
 function openClientModal(pageId, isIntake) {
   const cfg = loadConfig();
   if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients)) {
-    alert('Connect your Notion Clients database in Settings first.');
+    alert('Connect your Notion workspace in Settings first — make sure a Clients database is on the page you shared.');
     return;
   }
 
@@ -1333,7 +1326,7 @@ async function recalculateHealthScores() {
   if (demoGuard()) return;
   const cfg = loadConfig();
   if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients) {
-    alert('Connect your Notion Clients database in Settings first.');
+    alert('Connect your Notion workspace in Settings first — make sure a Clients database is on the page you shared.');
     return;
   }
 
@@ -1424,7 +1417,7 @@ let lastProjectPages = {};
 function openProjectModal(pageId) {
   const cfg = loadConfig();
   if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.projects)) {
-    alert('Connect your Notion Projects database in Settings first.');
+    alert('This needs a Projects database on your connected Notion page. Add one there, then reopen Settings and reconnect.');
     return;
   }
 
@@ -1603,7 +1596,7 @@ function showToast(message) {
 function openTaskModal(pageId) {
   const cfg = loadConfig();
   if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.tasks)) {
-    alert('Connect your Notion Tasks database in Settings first.');
+    alert('This needs a Tasks database on your connected Notion page. Add one there, then reopen Settings and reconnect.');
     return;
   }
 
@@ -1716,7 +1709,7 @@ let financeTitleProp = null;
 function openFinanceModal(pageId) {
   const cfg = loadConfig();
   if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.finance)) {
-    alert('Connect your Notion Finance database in Settings first.');
+    alert('Connect your Notion workspace in Settings first — make sure a Finance database is on the page you shared.');
     return;
   }
 
@@ -1827,7 +1820,7 @@ let teamTitleProp = null;
 function openTeamModal(pageId) {
   const cfg = loadConfig();
   if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.team)) {
-    alert('Connect your Notion Team database in Settings first.');
+    alert('This needs a Team database on your connected Notion page (Freelancer Edition doesn\'t include one). Add it, then reopen Settings and reconnect.');
     return;
   }
 
@@ -1932,7 +1925,7 @@ let contentTitleProp = null;
 function openContentModal(pageId) {
   const cfg = loadConfig();
   if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.content)) {
-    alert('Connect your Notion Content Calendar database in Settings first.');
+    alert('This needs a Content Calendar database on your connected Notion page. Add one there, then reopen Settings and reconnect.');
     return;
   }
 
@@ -2187,7 +2180,7 @@ async function extractMeetingTasks() {
   if (demoGuard()) return;
   const cfg = loadConfig();
   if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.tasks) {
-    alert('Connect your Notion Tasks database in Settings first.');
+    alert('This needs a Tasks database on your connected Notion page. Add one there, then reopen Settings and reconnect.');
     return;
   }
   const notesEl = document.getElementById('meetingNotes');
@@ -2850,14 +2843,16 @@ async function fetchAndRender() {
     const dbLabels = { clients: 'Clients', finance: 'Finance', team: 'Team', projects: 'Projects', tasks: 'Tasks', content: 'Content Calendar' };
     const failedDbs = Object.keys(dbLabels).filter(k => data[k] && data[k].error).map(k => dbLabels[k]);
 
-    // Clients and Finance are the two databases this same modal requires to
-    // even save (Team/Projects/Tasks/Content are explicitly "Optional" in
-    // Settings). A bad token fails every database at once; a bad ID fails
-    // just that one. Either way, if a REQUIRED database failed, the buyer
-    // is not actually connected — the badge must not say "live" while
-    // Clients/Finance data is missing or wrong, even though the HTTP
-    // request itself succeeded (the Worker still returns 200 with a
-    // per-database error, not a top-level one, for this case).
+    // Clients and Finance are the two databases required to connect at all
+    // (Settings now discovers all databases automatically from one page
+    // link; Team/Projects/Tasks/Content are simply absent if not found —
+    // see REQUIRED_DB_KEYS in worker.js). A bad token fails every database
+    // at once; a missing one on the page fails just that one. Either way,
+    // if a REQUIRED database failed, the buyer is not actually connected —
+    // the badge must not say "live" while Clients/Finance data is missing
+    // or wrong, even though the HTTP request itself succeeded (the Worker
+    // still returns 200 with a per-database error, not a top-level one,
+    // for this case).
     const REQUIRED_DBS = ['clients', 'finance'];
     const requiredFailed = REQUIRED_DBS.filter(k => data[k] && data[k].error);
 
@@ -2866,7 +2861,7 @@ async function fetchAndRender() {
       badge.className = 'badge off';
       const requiredLabels = requiredFailed.map(k => dbLabels[k]).join(' and ');
       const firstErr = data[requiredFailed[0]].error;
-      note.textContent = `Could not load your ${requiredLabels} database${requiredFailed.length > 1 ? 's' : ''} — check that your Notion token and the correct database ID${requiredFailed.length > 1 ? 's are' : ' is'} entered in Settings.` + (firstErr ? ` (${firstErr})` : '');
+      note.textContent = `Could not load your ${requiredLabels} database${requiredFailed.length > 1 ? 's' : ''} — check that your Notion token is correct and the page you shared in Settings still has this database on it.` + (firstErr ? ` (${firstErr})` : '');
       TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
       document.body.classList.remove('is-connected');
       updateDemoBtnVisibility(false);
@@ -2887,7 +2882,7 @@ async function fetchAndRender() {
   } catch (err) {
     badge.innerHTML = '<span class="live-dot"></span>Connection error';
     badge.className = 'badge off';
-    note.textContent = 'Could not load your data (' + err.message + '). Check your token and database IDs in Settings.';
+    note.textContent = 'Could not load your data (' + err.message + '). Check your token and page link in Settings.';
     TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
     document.body.classList.remove('is-connected');
     updateDemoBtnVisibility(false);
