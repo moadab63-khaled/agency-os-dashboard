@@ -345,6 +345,14 @@
         <h1>Agency OS — Live Command Center</h1>
         <div style="display:flex; gap:8px; align-items:center;">
           <span id="statusBadge" class="badge off">Not connected</span>
+          <div style="position:relative;">
+            <input type="text" id="globalSearchInput" placeholder="Search everything…"
+                   class="search-input" style="margin-bottom:0;width:160px;"
+                   oninput="handleGlobalSearchInput(this.value)"
+                   onfocus="handleGlobalSearchInput(this.value)"
+                   autocomplete="off">
+            <div id="globalSearchResults" style="display:none;position:absolute;top:calc(100% + 6px);max-height:340px;overflow-y:auto;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:var(--shadow-lg);z-index:15;padding:6px;"></div>
+          </div>
           <button class="demo-btn" id="demoBtn" onclick="loadDemoData()">👀 See Demo Data</button>
           <button class="gear" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings</button>
         </div>
@@ -1098,7 +1106,18 @@ function detectTitleProp(pages) {
 // complete dataset out. Uses the same findProp()/alias system as the rest of
 // the dashboard so a renamed column doesn't silently produce a blank CSV column.
 function csvEscape(value) {
-  const s = (value === null || value === undefined) ? '' : String(value);
+  // Only strings can carry a formula-injection payload -- a genuine JS
+  // number (e.g. Finance Amount, which may legitimately be negative for a
+  // refund/adjustment) is never at risk and must not be turned into a
+  // text-flagged cell, or SUM() over that column would silently exclude it.
+  if (typeof value === 'number') return String(value);
+  let s = (value === null || value === undefined) ? '' : String(value);
+  // Formula-injection guard (OWASP CSV Injection): a leading =, +, -, @, tab,
+  // or CR is how Excel/Sheets/LibreOffice decide a cell is a formula. Prefix
+  // with a single quote to force plain-text interpretation. Legitimate data
+  // like '-500' or a company literally named '+1 Marketing' still displays
+  // correctly as text.
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
   return s;
 }
@@ -1130,6 +1149,215 @@ function exportClientsCsv() {
   });
   if (rows.length === 1) { alert('No client records to export yet.'); return; }
   downloadCsv('clients-export.csv', rows);
+}
+
+// CSV Import — Clients. RFC4180-style parser matching this file's own
+// csvEscape() quoting rules (comma/quote/newline -> quoted field, embedded
+// quotes doubled). Strips a leading UTF-8 BOM so a buyer re-importing their
+// own exported file (downloadCsv() prepends a BOM for Excel) still matches.
+const CLIENT_IMPORT_HEADERS = ['Name', 'Company', 'Email', 'Status', 'Health Status'];
+const CLIENT_IMPORT_STATUS_VALUES = ['Lead', 'Active', 'Inactive'];
+const CLIENT_IMPORT_HEALTH_VALUES = ['Healthy', 'Watch', 'At Risk'];
+const CLIENT_IMPORT_MAX_ROWS = 500;
+
+function stripBom(text) {
+  return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  let i = 0;
+  const len = text.length;
+  function pushField() { row.push(field); field = ''; }
+  function pushRow() { pushField(); rows.push(row); row = []; }
+  while (i < len) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+        inQuotes = false; i++; continue;
+      }
+      field += c; i++; continue;
+    }
+    if (c === '"') { inQuotes = true; i++; continue; }
+    if (c === ',') { pushField(); i++; continue; }
+    if (c === '\r') { i++; continue; }
+    if (c === '\n') { pushRow(); i++; continue; }
+    field += c; i++;
+  }
+  if (field.length || row.length) pushRow();
+  if (rows.length && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') {
+    rows.pop();
+  }
+  return rows;
+}
+
+// Pure planning function (no DOM/network): given raw CSV text and the
+// buyer's existing client emails (for duplicate detection, same rule
+// saveClient() already enforces), returns what would happen. Nothing is
+// sent to Notion here.
+function planClientImport(csvText, existingClientEmails) {
+  const rows = parseCsv(stripBom(csvText));
+  if (!rows.length) {
+    return { ok: false, error: 'That file appears to be empty.' };
+  }
+  const header = rows[0].map(h => h.trim());
+  const headerLower = header.map(h => h.toLowerCase());
+  const colIndex = {};
+  for (const expected of CLIENT_IMPORT_HEADERS) {
+    const idx = headerLower.indexOf(expected.toLowerCase());
+    if (idx !== -1) colIndex[expected] = idx;
+  }
+  if (colIndex['Name'] === undefined) {
+    return { ok: false, error: `Could not find a "Name" column. Expected headers like: ${CLIENT_IMPORT_HEADERS.join(', ')}.` };
+  }
+  const dataRows = rows.slice(1);
+  if (dataRows.length > CLIENT_IMPORT_MAX_ROWS) {
+    return { ok: false, error: `This file has ${dataRows.length} rows -- please import in batches of ${CLIENT_IMPORT_MAX_ROWS} or fewer.` };
+  }
+  const existingEmailSet = new Set(
+    (existingClientEmails || []).filter(Boolean).map(e => e.trim().toLowerCase())
+  );
+  const toCreate = [];
+  const skippedNoName = [];
+  const skippedDuplicate = [];
+  const valueWarnings = [];
+  dataRows.forEach((cells, i) => {
+    const rowNum = i + 2;
+    const get = (key) => (colIndex[key] !== undefined ? (cells[colIndex[key]] || '').trim() : '');
+    const name = get('Name');
+    if (!name) { skippedNoName.push(rowNum); return; }
+    const email = get('Email');
+    if (email && existingEmailSet.has(email.toLowerCase())) {
+      skippedDuplicate.push({ row: rowNum, name, email });
+      return;
+    }
+    let status = get('Status');
+    if (status && !CLIENT_IMPORT_STATUS_VALUES.includes(status)) {
+      valueWarnings.push({ row: rowNum, field: 'Status', value: status });
+      status = '';
+    }
+    let healthStatus = get('Health Status');
+    if (healthStatus && !CLIENT_IMPORT_HEALTH_VALUES.includes(healthStatus)) {
+      valueWarnings.push({ row: rowNum, field: 'Health Status', value: healthStatus });
+      healthStatus = '';
+    }
+    if (email) existingEmailSet.add(email.toLowerCase());
+    toCreate.push({ row: rowNum, name, company: get('Company'), email, status, healthStatus });
+  });
+  return { ok: true, toCreate, skippedNoName, skippedDuplicate, valueWarnings, totalDataRows: dataRows.length };
+}
+
+function triggerClientImport() {
+  if (demoGuard()) return;
+  const cfg = loadConfig();
+  if (!cfg || !cfg.token || !cfg.databases || !cfg.databases.clients) {
+    alert('Connect your Notion workspace in Settings first — make sure a Clients database is on the page you shared.');
+    return;
+  }
+  document.getElementById('clientImportFile').click();
+}
+
+async function handleClientImportFile(event) {
+  const file = event.target.files && event.target.files[0];
+  // Reset immediately so choosing the SAME file again still fires 'change'.
+  event.target.value = '';
+  if (!file) return;
+
+  // Reject oversized files BEFORE reading them into memory -- a mis-selected
+  // large file (wrong file, accidental tap) should fail fast with a clear
+  // message instead of freezing the tab while it's read and parsed char by
+  // char. 5MB is generously above what 500 rows of client data could ever be.
+  const CLIENT_IMPORT_MAX_FILE_BYTES = 5 * 1024 * 1024;
+  if (file.size > CLIENT_IMPORT_MAX_FILE_BYTES) {
+    alert(`That file is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Please choose a CSV under 5MB — this feature supports up to ${CLIENT_IMPORT_MAX_ROWS} clients at a time.`);
+    return;
+  }
+
+  const cfg = loadConfig();
+  const text = await file.text();
+  const existingEmails = Object.values(lastClientPages).map(p => {
+    const props = p.properties || {};
+    return (props['Email'] && props['Email'].email) || '';
+  });
+
+  const plan = planClientImport(text, existingEmails);
+  if (!plan.ok) {
+    alert(plan.error);
+    return;
+  }
+  if (!plan.toCreate.length) {
+    const parts = [];
+    if (plan.skippedNoName.length) parts.push(`${plan.skippedNoName.length} row(s) had no Name`);
+    if (plan.skippedDuplicate.length) parts.push(`${plan.skippedDuplicate.length} row(s) matched an existing client's email`);
+    alert('Nothing to import.' + (parts.length ? ' (' + parts.join('; ') + ')' : ''));
+    return;
+  }
+
+  const summaryLines = [
+    `Import ${plan.toCreate.length} client${plan.toCreate.length === 1 ? '' : 's'} from "${esc(file.name)}"?`
+  ];
+  if (plan.skippedNoName.length) summaryLines.push(`${plan.skippedNoName.length} row(s) will be skipped (no Name).`);
+  if (plan.skippedDuplicate.length) summaryLines.push(`${plan.skippedDuplicate.length} row(s) will be skipped (email already exists).`);
+  if (plan.valueWarnings.length) summaryLines.push(`${plan.valueWarnings.length} Status/Health Status value(s) weren't recognized and will be left blank.`);
+  if (!confirm(summaryLines.join('\n'))) return;
+
+  const btn = document.getElementById('clientImportBtn');
+  const originalText = btn ? btn.textContent : '';
+  let createdCount = 0;
+  const failedRows = [];
+
+  for (let i = 0; i < plan.toCreate.length; i++) {
+    const row = plan.toCreate[i];
+    if (btn) { btn.textContent = `Importing… (${i + 1}/${plan.toCreate.length})`; btn.disabled = true; }
+
+    const properties = { 'Name': { title: [{ text: { content: row.name } }] } };
+    if (row.company) properties['Company'] = { rich_text: [{ text: { content: row.company } }] };
+    if (row.email) properties['Email'] = { email: row.email };
+    if (row.status) properties['Status'] = { select: { name: row.status } };
+    if (row.healthStatus) properties['Health Status'] = { select: { name: row.healthStatus } };
+
+    try {
+      const res = await notionFetch('/api/notion-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: cfg.token, action: 'create', databaseId: cfg.databases.clients, properties })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) throw new Error(data.error || 'Create failed');
+      createdCount++;
+    } catch (e) {
+      failedRows.push({ row: row.row, name: row.name, reason: e.message });
+    }
+  }
+
+  if (btn) { btn.textContent = originalText; btn.disabled = false; }
+
+  const doneParts = [`✓ Imported ${createdCount} of ${plan.toCreate.length} client${plan.toCreate.length === 1 ? '' : 's'}`];
+  if (failedRows.length) doneParts.push(`⚠️ ${failedRows.length} failed`);
+  showToast(doneParts.join(' — '));
+
+  if (failedRows.length || plan.skippedDuplicate.length || plan.valueWarnings.length) {
+    const detailLines = [];
+    if (failedRows.length) {
+      detailLines.push('Failed:');
+      failedRows.forEach(f => detailLines.push(`  Row ${f.row} (${esc(f.name)}): ${esc(f.reason)}`));
+    }
+    if (plan.skippedDuplicate.length) {
+      detailLines.push('Skipped (email already exists):');
+      plan.skippedDuplicate.forEach(d => detailLines.push(`  Row ${d.row} (${esc(d.name)})`));
+    }
+    if (plan.valueWarnings.length) {
+      detailLines.push('Unrecognized values (left blank):');
+      plan.valueWarnings.forEach(w => detailLines.push(`  Row ${w.row}, ${w.field}: "${esc(w.value)}"`));
+    }
+    console.log(detailLines.join('\n'));
+  }
+
+  fetchAndRender();
 }
 
 function exportFinanceCsv() {
@@ -2361,6 +2589,135 @@ function switchTab(name) {
   });
 }
 
+// Unified search — searches Clients/Projects/Tasks/Finance/Content using
+// only the already-cached in-browser data (no extra network calls). Visibility
+// toggled via element.style.display directly (not a CSS class) since this
+// stylesheet is large and a class's existence can't be reliably confirmed.
+const GLOBAL_SEARCH_MAX_PER_TYPE = 6;
+const GLOBAL_SEARCH_TYPE_ICONS = { client: '👤', project: '📁', task: '✅', finance: '💰', content: '📝' };
+const GLOBAL_SEARCH_TAB_FOR_TYPE = { client: 'clients', project: 'projects', task: 'projects', finance: 'finance', content: 'finance' };
+
+function runGlobalSearch(query, pages) {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return { query: q, groups: [] };
+  const groups = [];
+  function addGroup(type, label, pageMap, matchFn) {
+    const matches = [];
+    for (const id in pageMap) {
+      const page = pageMap[id];
+      const props = page.properties || {};
+      const haystack = matchFn(props);
+      if (haystack && haystack.toLowerCase().includes(q)) {
+        matches.push({ id, type, title: titleText(findProp(props, NAME_NAMES)) || '(untitled)' });
+        if (matches.length >= GLOBAL_SEARCH_MAX_PER_TYPE) break;
+      }
+    }
+    if (matches.length) groups.push({ type, label, matches });
+  }
+  addGroup('client', 'Clients', pages.clients || {}, (props) => {
+    const name = titleText(findProp(props, NAME_NAMES));
+    const company = richText(props['Company']);
+    const email = (props['Email'] && props['Email'].email) || '';
+    return [name, company, email].join(' ');
+  });
+  addGroup('project', 'Projects', pages.projects || {}, (props) => titleText(findProp(props, NAME_NAMES)));
+  addGroup('task', 'Tasks', pages.tasks || {}, (props) => {
+    const tp = taskTitleProp && props[taskTitleProp] ? props[taskTitleProp] : findProp(props, NAME_NAMES);
+    return titleText(tp);
+  });
+  addGroup('finance', 'Finance', pages.finance || {}, (props) => {
+    const tp = financeTitleProp && props[financeTitleProp] ? props[financeTitleProp] : findProp(props, NAME_NAMES);
+    return titleText(tp);
+  });
+  addGroup('content', 'Content', pages.content || {}, (props) => {
+    const name = titleText(findProp(props, NAME_NAMES));
+    const body = richText(findProp(props, BODY_NAMES));
+    return [name, body].join(' ');
+  });
+  return { query: q, groups };
+}
+
+function positionGlobalSearchResults() {
+  const input = document.getElementById('globalSearchInput');
+  const resultsEl = document.getElementById('globalSearchResults');
+  const wrapper = input.parentElement; // the position:relative container -- dropdown's positioning parent
+  const wrapperRect = wrapper.getBoundingClientRect();
+  const margin = 10;
+  const desiredWidth = 280;
+  const width = Math.min(desiredWidth, window.innerWidth - margin * 2);
+  // Compute the ideal viewport-space position (right-aligned to the input),
+  // clamp it within the viewport, then convert back to a position relative
+  // to the wrapper -- since the dropdown is position:absolute inside it,
+  // this keeps it correctly anchored under the input as the page scrolls
+  // (no fixed-position/scroll-listener needed), while still never running
+  // off either edge of the screen on narrow phones.
+  let viewportLeft = wrapperRect.right - width;
+  viewportLeft = Math.max(margin, Math.min(viewportLeft, window.innerWidth - width - margin));
+  resultsEl.style.left = (viewportLeft - wrapperRect.left) + 'px';
+  resultsEl.style.width = width + 'px';
+}
+
+function handleGlobalSearchInput(value) {
+  const resultsEl = document.getElementById('globalSearchResults');
+  const q = (value || '').trim();
+  if (!q) { resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+
+  const pages = {
+    clients: lastClientPages,
+    projects: lastProjectPages,
+    tasks: lastTaskPages,
+    finance: lastFinancePages,
+    content: lastContentPages
+  };
+  const { groups } = runGlobalSearch(q, pages);
+
+  if (!groups.length) {
+    resultsEl.innerHTML = '<div style="padding:10px;color:var(--text-faint);font-size:12.5px;">No matches.</div>';
+    positionGlobalSearchResults();
+    resultsEl.style.display = 'block';
+    return;
+  }
+
+  resultsEl.innerHTML = groups.map(g => `
+    <div style="padding:4px 8px 2px;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-faint);">${g.label}</div>
+    ${g.matches.map(m => `
+      <div onclick="openGlobalSearchResult('${m.type}','${m.id}')"
+           style="padding:8px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;gap:8px;align-items:center;"
+           onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">
+        <span>${GLOBAL_SEARCH_TYPE_ICONS[m.type] || ''}</span><span>${esc(m.title)}</span>
+      </div>
+    `).join('')}
+  `).join('');
+  positionGlobalSearchResults();
+  resultsEl.style.display = 'block';
+}
+
+window.addEventListener('resize', function() {
+  const resultsEl = document.getElementById('globalSearchResults');
+  if (resultsEl && resultsEl.style.display === 'block') positionGlobalSearchResults();
+});
+
+function openGlobalSearchResult(type, id) {
+  const tab = GLOBAL_SEARCH_TAB_FOR_TYPE[type];
+  if (tab) switchTab(tab);
+  document.getElementById('globalSearchResults').style.display = 'none';
+  document.getElementById('globalSearchInput').value = '';
+  if (type === 'client') openClientModal(id);
+  else if (type === 'project') openProjectModal(id);
+  else if (type === 'task') openTaskModal(id);
+  else if (type === 'finance') openFinanceModal(id);
+  else if (type === 'content') openContentModal(id);
+}
+
+document.addEventListener('click', function(e) {
+  const box = document.getElementById('globalSearchResults');
+  const input = document.getElementById('globalSearchInput');
+  if (!box || !input) return;
+  if (e.target !== input && !box.contains(e.target)) {
+    box.style.display = 'none';
+  }
+});
+
 function renderDashboard(data) {
   const clients = (data.clients && data.clients.results) || [];
   const finance = (data.finance && data.finance.results) || [];
@@ -2736,6 +3093,8 @@ function renderDashboard(data) {
           <span style="display:flex; gap:6px;">
             <button class="add-btn" onclick="recalculateHealthScores()" id="recalcBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Recalculate</button>
             <button class="add-btn" onclick="exportClientsCsv()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Export CSV</button>
+            <button class="add-btn" onclick="triggerClientImport()" id="clientImportBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Import CSV</button>
+            <input type="file" id="clientImportFile" accept=".csv" style="display:none" onchange="handleClientImportFile(event)">
             <button class="add-btn" onclick="openClientModal()">+ Add Client</button>
           </span>
         </div>
