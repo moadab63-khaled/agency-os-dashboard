@@ -68,7 +68,7 @@
     color: var(--gold);
   }
 
-  /* ===== Progress dots (legit — this IS a real 7-step sequence) ===== */
+  /* ===== Progress dots (legit — this IS a real step sequence) ===== */
   .progress {
     display: flex;
     gap: 8px;
@@ -280,7 +280,7 @@ const STEPS_BASE = [
     eyebrow: 'Welcome',
     url: 'notion.so',
     title: "Let's connect your live dashboard",
-    narration: "Before using Agency OS day to day, there's one 5-minute setup: connecting your dashboard to your own Notion workspace. The 5 steps below walk through it.",
+    narration: "Before using Agency OS day to day, there's one 5-minute setup: connecting your dashboard to your own Notion workspace. The 4 steps below walk through it — just one link to share, no database IDs to hunt down.",
     body: () => `
       <div style="text-align:center;padding:50px 0;">
         <div style="font-size:52px;margin-bottom:14px;">🧭</div>
@@ -290,7 +290,7 @@ const STEPS_BASE = [
     `
   },
   {
-    eyebrow: 'Step 1 of 5',
+    eyebrow: 'Step 1 of 4',
     url: 'notion.so/my-integrations',
     title: 'Create a free integration',
     narration: "Go to notion.so/my-integrations. Tap '+ New integration', give it any name (e.g. 'My Dashboard'), and choose 'Access token' as the type. Then tap Submit.",
@@ -307,7 +307,7 @@ const STEPS_BASE = [
     `
   },
   {
-    eyebrow: 'Step 2 of 5',
+    eyebrow: 'Step 2 of 4',
     url: 'notion.so/my-integrations',
     title: 'Copy your token',
     narration: "On the integration page, tap 'Show' next to Internal Integration Secret, then Copy. This is like a password — keep it private, don't share it anywhere.",
@@ -321,69 +321,52 @@ const STEPS_BASE = [
     `
   },
   {
-    eyebrow: 'Step 3 of 5',
-    url: (ed) => ed === 'agency' ? 'notion.so — Team database' : 'notion.so — Content Calendar',
-    title: 'Share your databases',
-    narration: (ed) => ed === 'agency'
-      ? "Now, for each of the 6 databases — Clients, Finance, Projects, Tasks, Content Calendar, and Team — open it, tap the ••• menu, go to Connections, Connect to, and pick your integration. Don't skip Team — it's easy to miss."
-      : "Now, for each of the 5 databases — Clients, Finance, Projects, Tasks, and Content Calendar — open it, tap the ••• menu, go to Connections, Connect to, and pick your integration.",
-    body: (ed) => {
-      const dbs = ed === 'agency'
-        ? ['Clients','Finance','Projects','Tasks','Content Calendar','Team']
-        : ['Clients','Finance','Projects','Tasks','Content Calendar'];
-      return dbs.map((d,i) => `
-        <div class="mock-row" ${i===dbs.length-1 ? 'id="targetEl"' : ''}>
-          <span>${d}</span>
-          <span class="mock-badge ${i < dbs.length-1 ? 'green' : 'gray'}">${i < dbs.length-1 ? 'Connections 1' : 'Connect to…'}</span>
-        </div>
-      `).join('');
-    }
+    eyebrow: 'Step 3 of 4',
+    url: (ed) => ed === 'agency' ? 'notion.so — Agency OS Agency Edition' : 'notion.so — Agency OS Freelancer Edition',
+    title: 'Share your workspace page',
+    narration: (ed) => "Open the one main page you duplicated when you set up Agency OS — not the individual databases. Tap the ••• menu, go to Connections, Connect to, and pick your integration. Every database on that page" + (ed === 'agency' ? ' (including Team)' : '') + " connects automatically — nothing else to share.",
+    body: (ed) => `
+      <div class="mock-row" id="targetEl">
+        <span>${ed === 'agency' ? 'Agency OS — Agency Edition' : 'Agency OS — Freelancer Edition'}</span>
+        <span class="mock-badge gray">Connect to…</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;">This is the single page — you only do this once, for this one page.</div>
+    `
   },
   {
-    eyebrow: 'Step 4 of 5',
-    url: 'notion.so/p/1a2b3c4d5e6f...?v=...',
-    title: 'Copy each Database ID',
-    narration: "Open each database as a full page. In the URL, copy only the 32-character ID — not the whole link. The easiest way: tap ••• then Copy link, then just keep the part between /p/ and the question mark.",
-    body: () => `
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Tap ••• then Copy link on the database. This is what you'll get:</div>
+    eyebrow: 'Step 4 of 4',
+    url: (ed) => ed === 'agency' ? 'notion.so — Agency OS Agency Edition' : 'notion.so — Agency OS Freelancer Edition',
+    title: 'Copy your page link',
+    narration: "Tap ••• again on that same page, then Copy link. That's the one link you'll paste into the dashboard in a moment — no trimming, no extracting an ID from it.",
+    body: (ed) => `
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Tap ••• then Copy link on your workspace page:</div>
       <div style="background:#0F1729;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:monospace;font-size:12px;line-height:1.9;overflow-wrap:break-word;">
-        <span style="color:var(--muted);">notion.so/p/</span><span style="color:var(--gold);font-weight:700;">1a2b3c4d5e6f7g8h9i0j1a2b3c4d5e6f</span><span style="color:var(--muted);">?v=209e8f7a6b5c</span>
+        <span style="color:var(--gold);font-weight:700;">notion.so/Agency-OS-${ed === 'agency' ? 'Agency' : 'Freelancer'}-Edition-1a2b3c4d5e6f7g8h9i0j1a2b3c4d5e6f</span>
       </div>
-      <div style="margin-top:12px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:8px;padding:12px 14px;">
-        <div style="font-size:12px;color:var(--text);line-height:1.6;">
-          <span style="color:var(--gold);font-weight:700;">Copy the part between</span>
-          <code style="background:#0F1729;padding:2px 6px;border-radius:4px;color:var(--gold);">/p/</code>
-          <span style="color:var(--gold);font-weight:700;">and</span>
-          <code style="background:#0F1729;padding:2px 6px;border-radius:4px;color:var(--gold);">?v=</code>
-          — that's your 32-character Database ID, shown in gold above.
-        </div>
-      </div>
-      <div style="font-size:12px;color:var(--muted);margin-top:10px;">🚫 Not the "notion.so/p/" part, and not the "?v=..." part — just what's between them.</div>
+      <div class="mock-btn" style="margin-top:12px;" id="targetEl">Copy link</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:10px;">Paste the whole thing as-is in the next step — no editing needed.</div>
     `
   },
   {
     eyebrow: 'Step 5 of 5',
     url: 'agency-os-dashboard.moadab63.workers.dev',
     title: 'Connect your dashboard',
-    narration: (ed) => `Go to agency-os-dashboard.moadab63.workers.dev, tap Settings, and paste your License Key, your token, plus all database IDs${ed==='agency' ? ' — including Team' : ''}. Then tap Save and Connect.`,
-    body: (ed) => {
-      const dbs = ed === 'agency'
-        ? ['Clients','Finance','Team (optional)','Projects','Tasks','Content Calendar']
-        : ['Clients','Finance','Projects','Tasks','Content Calendar'];
-      return `
-        <div class="mock-field">
-          <div class="mock-label">License Key</div>
-          <div class="mock-input">AOS-XXXX-XXXX-XXXX</div>
-        </div>
-        ${dbs.map(d => `
-          <div class="mock-field">
-            <div class="mock-label">${d} database ID</div>
-            <div class="mock-input">••••••••••••••••••••••••••••••</div>
-          </div>
-        `).join('')}
-        <div class="mock-btn" id="targetEl">Save &amp; Connect</div>
-      `;
-    }
+    narration: "Go to agency-os-dashboard.moadab63.workers.dev, tap Settings, and paste your License Key, your token, and the page link you just copied. Then tap Save & Connect — your databases are found automatically, no manual IDs needed.",
+    body: () => `
+      <div class="mock-field">
+        <div class="mock-label">License Key</div>
+        <div class="mock-input">AOS-XXXX-XXXX-XXXX</div>
+      </div>
+      <div class="mock-field">
+        <div class="mock-label">Notion integration token</div>
+        <div class="mock-input token">•••••••••••••••••</div>
+      </div>
+      <div class="mock-field">
+        <div class="mock-label">Notion page link</div>
+        <div class="mock-input" style="font-size:11px;">notion.so/Agency-OS-…</div>
+      </div>
+      <div class="mock-btn" id="targetEl">Save &amp; Connect</div>
+    `
   },
   {
     eyebrow: 'Done',
@@ -441,7 +424,7 @@ function render() {
   if (targetEl) {
     // Position the cursor at the real element's location, computed from
     // actual layout — not a guessed percentage — so it stays correct no
-    // matter how long the content is (e.g. 5 vs 6 databases).
+    // matter how long the content is.
     cursor.style.display = 'block';
     const deviceRect = document.querySelector('.device').getBoundingClientRect();
     const targetRect = targetEl.getBoundingClientRect();
@@ -453,8 +436,8 @@ function render() {
     void cursor.offsetWidth;
     cursor.classList.add('click');
   } else {
-    // No real tappable target on this step (Welcome, Step 4's read-only
-    // explanation, Done) — hide the cursor instead of pointing at nothing.
+    // No real tappable target on this step (Welcome, Done) — hide the
+    // cursor instead of pointing at nothing.
     cursor.style.display = 'none';
   }
 }
