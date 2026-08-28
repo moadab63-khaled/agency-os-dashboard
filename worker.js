@@ -2,6 +2,8 @@ var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
 // worker.js
+var __defProp2 = Object.defineProperty;
+var __name2 = /* @__PURE__ */ __name((target, value) => __defProp2(target, "name", { value, configurable: true }), "__name");
 var NOTION_VERSION = "2022-06-28";
 var NOTION_VERSION_DATA_SOURCES = "2025-09-03";
 var CORS = {
@@ -16,10 +18,12 @@ function json(data, status = 200) {
   });
 }
 __name(json, "json");
+__name2(json, "json");
 function isMultiDataSourceError(errText) {
   return typeof errText === "string" && errText.includes("multiple_data_sources_for_database");
 }
 __name(isMultiDataSourceError, "isMultiDataSourceError");
+__name2(isMultiDataSourceError, "isMultiDataSourceError");
 async function fetchWithRetry(url, options, maxRetries = 1) {
   let attempt = 0;
   while (true) {
@@ -32,6 +36,7 @@ async function fetchWithRetry(url, options, maxRetries = 1) {
   }
 }
 __name(fetchWithRetry, "fetchWithRetry");
+__name2(fetchWithRetry, "fetchWithRetry");
 function coerceAiText(raw) {
   if (typeof raw === "string") return raw;
   if (raw == null) return "";
@@ -45,10 +50,7 @@ function coerceAiText(raw) {
   return String(raw);
 }
 __name(coerceAiText, "coerceAiText");
-
-// ---------------------------------------------------------------------------
-// LICENSE VERIFICATION
-// ---------------------------------------------------------------------------
+__name2(coerceAiText, "coerceAiText");
 async function checkLicense(env, licenseKey) {
   if (!licenseKey || typeof licenseKey !== "string") {
     return { valid: false, reason: "missing" };
@@ -72,7 +74,7 @@ async function checkLicense(env, licenseKey) {
   return { valid: true, edition: record.edition || null };
 }
 __name(checkLicense, "checkLicense");
-
+__name2(checkLicense, "checkLicense");
 async function handleAdminLicense(request, env) {
   let payload;
   try {
@@ -80,7 +82,7 @@ async function handleAdminLicense(request, env) {
   } catch (e) {
     return json({ error: "Invalid JSON body" }, 400);
   }
-  const { adminSecret, licenseKey, status, edition, note } = payload;
+  const { adminSecret, licenseKey, status, edition, note, resetWorkspace } = payload;
   if (!env.ADMIN_SECRET || adminSecret !== env.ADMIN_SECRET) {
     return json({ error: "Unauthorized" }, 401);
   }
@@ -90,17 +92,157 @@ async function handleAdminLicense(request, env) {
   if (!env.LICENSES) {
     return json({ error: "LICENSES KV binding not configured on this Worker" }, 500);
   }
+  const trimmedKey = licenseKey.trim();
+  let existing = {};
+  const rawExisting = await env.LICENSES.get(trimmedKey);
+  if (rawExisting) {
+    try {
+      existing = JSON.parse(rawExisting);
+    } catch (e) {
+      existing = {};
+    }
+  }
   const record = {
+    ...existing,
     status: status === "revoked" ? "revoked" : "active",
-    edition: edition || null,
-    note: note || "",
-    updatedAt: new Date().toISOString()
+    edition: edition || existing.edition || null,
+    note: note !== void 0 ? note : existing.note || "",
+    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
   };
-  await env.LICENSES.put(licenseKey.trim(), JSON.stringify(record));
-  return json({ ok: true, licenseKey: licenseKey.trim(), record });
+  if (resetWorkspace === true) {
+    delete record.notionWorkspaceId;
+    delete record.notionWorkspaceName;
+    delete record.notionAccessToken;
+    delete record.connectedAt;
+  }
+  await env.LICENSES.put(trimmedKey, JSON.stringify(record));
+  return json({ ok: true, licenseKey: trimmedKey, record });
 }
 __name(handleAdminLicense, "handleAdminLicense");
+__name2(handleAdminLicense, "handleAdminLicense");
 
+// ---- OAuth (Notion "Connect to Notion" flow) ----
+var OAUTH_STATE_TTL_SECONDS = 600;
+var RECONNECT_COOLDOWN_MS = 48 * 60 * 60 * 1e3;
+function dashboardBaseUrl(request) {
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.host}`;
+}
+__name(dashboardBaseUrl, "dashboardBaseUrl");
+__name2(dashboardBaseUrl, "dashboardBaseUrl");
+function redirectToDashboard(request, params) {
+  const base = dashboardBaseUrl(request);
+  const qs = new URLSearchParams(params).toString();
+  return Response.redirect(`${base}/?${qs}`, 302);
+}
+__name(redirectToDashboard, "redirectToDashboard");
+__name2(redirectToDashboard, "redirectToDashboard");
+async function handleOAuthStart(request, env) {
+  const url = new URL(request.url);
+  const licenseKey = (url.searchParams.get("licenseKey") || "").trim();
+  if (!licenseKey) {
+    return redirectToDashboard(request, { connect: "missing_license" });
+  }
+  const licenseCheck = await checkLicense(env, licenseKey);
+  if (!licenseCheck.valid) {
+    return redirectToDashboard(request, { connect: "invalid_license" });
+  }
+  if (!env.NOTION_CLIENT_ID) {
+    return redirectToDashboard(request, { connect: "not_configured" });
+  }
+  const state = crypto.randomUUID();
+  await env.LICENSES.put(`oauth_state:${state}`, licenseKey, {
+    expirationTtl: OAUTH_STATE_TTL_SECONDS
+  });
+  const redirectUri = `${dashboardBaseUrl(request)}/oauth/callback`;
+  const authorizeUrl = new URL("https://api.notion.com/v1/oauth/authorize");
+  authorizeUrl.searchParams.set("client_id", env.NOTION_CLIENT_ID);
+  authorizeUrl.searchParams.set("response_type", "code");
+  authorizeUrl.searchParams.set("owner", "user");
+  authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+  authorizeUrl.searchParams.set("state", state);
+  return Response.redirect(authorizeUrl.toString(), 302);
+}
+__name(handleOAuthStart, "handleOAuthStart");
+__name2(handleOAuthStart, "handleOAuthStart");
+async function handleOAuthCallback(request, env) {
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  const notionError = url.searchParams.get("error");
+  if (notionError) {
+    return redirectToDashboard(request, { connect: "denied" });
+  }
+  if (!code || !state) {
+    return redirectToDashboard(request, { connect: "bad_request" });
+  }
+  const stateKey = `oauth_state:${state}`;
+  const licenseKey = await env.LICENSES.get(stateKey);
+  if (!licenseKey) {
+    return redirectToDashboard(request, { connect: "expired" });
+  }
+  await env.LICENSES.delete(stateKey);
+  if (!env.NOTION_CLIENT_ID || !env.NOTION_CLIENT_SECRET) {
+    return redirectToDashboard(request, { connect: "not_configured" });
+  }
+  const redirectUri = `${dashboardBaseUrl(request)}/oauth/callback`;
+  const basicAuth = btoa(`${env.NOTION_CLIENT_ID}:${env.NOTION_CLIENT_SECRET}`);
+  let tokenRes;
+  try {
+    tokenRes = await fetch("https://api.notion.com/v1/oauth/token", {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: redirectUri
+      })
+    });
+  } catch (e) {
+    return redirectToDashboard(request, { connect: "token_exchange_failed" });
+  }
+  if (!tokenRes.ok) {
+    return redirectToDashboard(request, { connect: "token_exchange_failed" });
+  }
+  const tokenData = await tokenRes.json();
+  const {
+    access_token: accessToken,
+    workspace_id: workspaceId,
+    workspace_name: workspaceName
+  } = tokenData;
+  if (!accessToken || !workspaceId) {
+    return redirectToDashboard(request, { connect: "token_exchange_failed" });
+  }
+  const rawRecord = await env.LICENSES.get(licenseKey);
+  let record = {};
+  if (rawRecord) {
+    try {
+      record = JSON.parse(rawRecord);
+    } catch (e) {
+      record = {};
+    }
+  }
+  if (record.notionWorkspaceId && record.notionWorkspaceId !== workspaceId) {
+    return redirectToDashboard(request, { connect: "workspace_mismatch" });
+  }
+  if (record.lastWorkspaceId && record.lastWorkspaceId !== workspaceId) {
+    const elapsedMs = Date.now() - new Date(record.lastDisconnectedAt || 0).getTime();
+    if (elapsedMs < RECONNECT_COOLDOWN_MS) {
+      return redirectToDashboard(request, { connect: "cooldown" });
+    }
+  }
+  record.notionWorkspaceId = workspaceId;
+  record.notionWorkspaceName = workspaceName || null;
+  record.notionAccessToken = accessToken;
+  record.connectedAt = (/* @__PURE__ */ new Date()).toISOString();
+  await env.LICENSES.put(licenseKey, JSON.stringify(record));
+  return redirectToDashboard(request, { connect: "success" });
+}
+__name(handleOAuthCallback, "handleOAuthCallback");
+__name2(handleOAuthCallback, "handleOAuthCallback");
 async function getDataSourceIds(databaseId, token) {
   const res = await fetchWithRetry(`https://api.notion.com/v1/databases/${databaseId}`, {
     method: "GET",
@@ -121,21 +263,7 @@ async function getDataSourceIds(databaseId, token) {
   return ids;
 }
 __name(getDataSourceIds, "getDataSourceIds");
-
-// ---------------------------------------------------------------------------
-// AUTO-DISCOVERY OF THE 6 DATABASES FROM A SINGLE PARENT PAGE LINK
-// ---------------------------------------------------------------------------
-// Verified live against the real product template (Aug 26 2026): the 6
-// databases (Team, Clients, Projects, Tasks, Finance, Content Calendar) are
-// full-page databases that are direct children of the top-level
-// "Agency OS ... Edition" page. Notion's GET /v1/blocks/{id}/children
-// returns each of them as a block of type "child_database", where the
-// block's own "id" IS the database ID -- no separate lookup needed.
-//
-// This only looks at DIRECT children of the given page (one level), matching
-// the confirmed real structure. It deliberately does not recurse into
-// sub-pages, since that was not the structure found in the live template.
-
+__name2(getDataSourceIds, "getDataSourceIds");
 var DB_NAME_ALIASES = {
   team: ["team"],
   clients: ["clients", "client"],
@@ -144,19 +272,9 @@ var DB_NAME_ALIASES = {
   finance: ["finance", "financial"],
   content: ["content calendar", "content", "calendar"]
 };
-
-// Only these two are hard requirements to connect the dashboard at all,
-// matching the settings modal's own "required" fields. Team (Freelancer
-// Edition has none), Projects, Tasks and Content are optional extras --
-// discovery should never fail just because one of those isn't on the page.
 var REQUIRED_DB_KEYS = ["clients", "finance"];
-
 function normalizeNotionId(idOrUrl) {
   if (!idOrUrl || typeof idOrUrl !== "string") return null;
-  // Pull out anything that looks like a 32-hex-char Notion ID from a raw ID
-  // or from any notion.so / notion.site URL, ignoring query strings, and
-  // reformat it into standard 8-4-4-4-12 UUID form (with dashes) since
-  // that's what the Notion API expects.
   const cleaned = idOrUrl.split("?")[0].split("#")[0];
   const hexMatch = cleaned.replace(/-/g, "").match(/([0-9a-fA-F]{32})(?!.*[0-9a-fA-F]{32})/);
   if (!hexMatch) return null;
@@ -164,7 +282,7 @@ function normalizeNotionId(idOrUrl) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 __name(normalizeNotionId, "normalizeNotionId");
-
+__name2(normalizeNotionId, "normalizeNotionId");
 async function fetchChildDatabaseBlocks(blockId, token) {
   const found = [];
   let cursor = void 0;
@@ -190,7 +308,7 @@ async function fetchChildDatabaseBlocks(blockId, token) {
       if (block.type === "child_database") {
         found.push({
           id: block.id,
-          title: (block.child_database && block.child_database.title) || ""
+          title: block.child_database && block.child_database.title || ""
         });
       }
     }
@@ -200,10 +318,10 @@ async function fetchChildDatabaseBlocks(blockId, token) {
   return found;
 }
 __name(fetchChildDatabaseBlocks, "fetchChildDatabaseBlocks");
-
+__name2(fetchChildDatabaseBlocks, "fetchChildDatabaseBlocks");
 function matchDatabasesToKeys(childDatabases) {
   const found = {};
-  const usedIds = new Set();
+  const usedIds = /* @__PURE__ */ new Set();
   for (const key of Object.keys(DB_NAME_ALIASES)) {
     const aliases = DB_NAME_ALIASES[key];
     const match = childDatabases.find((db) => {
@@ -221,7 +339,7 @@ function matchDatabasesToKeys(childDatabases) {
   return { found, missing, missingRequired };
 }
 __name(matchDatabasesToKeys, "matchDatabasesToKeys");
-
+__name2(matchDatabasesToKeys, "matchDatabasesToKeys");
 async function handleDiscoverDatabases(payload, token) {
   const { pageUrl } = payload;
   const pageId = normalizeNotionId(pageUrl);
@@ -261,13 +379,78 @@ async function handleDiscoverDatabases(payload, token) {
       all: childDatabases
     }, 404);
   }
-  // Non-required databases (Team, Projects, Tasks, Content) simply come back
-  // absent from `found` if they're not on the page -- e.g. Freelancer Edition
-  // has no Team database. That's expected, not an error.
   return json({ ok: true, databases: found, missing, all: childDatabases });
 }
 __name(handleDiscoverDatabases, "handleDiscoverDatabases");
-
+__name2(handleDiscoverDatabases, "handleDiscoverDatabases");
+async function fetchAllAccessibleDatabases(token) {
+  const found = [];
+  let cursor = void 0;
+  let page = 0;
+  const MAX_PAGES = 10;
+  do {
+    const res = await fetchWithRetry("https://api.notion.com/v1/search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        filter: { value: "database", property: "object" },
+        page_size: 100,
+        ...cursor ? { start_cursor: cursor } : {}
+      })
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      const err = new Error(`Notion API error (${res.status}) searching accessible databases: ${errText}`);
+      err.notionStatus = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    for (const item of data.results || []) {
+      const titleParts = (item.title || []).map((t) => t.plain_text || "").join("");
+      found.push({ id: item.id, title: titleParts });
+    }
+    cursor = data.has_more ? data.next_cursor : null;
+    page++;
+  } while (cursor && page < MAX_PAGES);
+  return found;
+}
+__name(fetchAllAccessibleDatabases, "fetchAllAccessibleDatabases");
+__name2(fetchAllAccessibleDatabases, "fetchAllAccessibleDatabases");
+async function handleDiscoverDatabasesViaSearch(token) {
+  let accessibleDatabases;
+  try {
+    accessibleDatabases = await fetchAllAccessibleDatabases(token);
+  } catch (err) {
+    if (err.notionStatus === 401) {
+      return json({
+        error: "Your Notion connection is no longer valid. Please reconnect via Settings."
+      }, 401);
+    }
+    return json({ error: err.message }, 502);
+  }
+  if (!accessibleDatabases.length) {
+    return json({
+      error: "No databases were found. Make sure you selected the page containing Clients, Finance and your other databases when you clicked Allow on Notion's screen.",
+      all: []
+    }, 404);
+  }
+  const { found, missing, missingRequired } = matchDatabasesToKeys(accessibleDatabases);
+  if (missingRequired.length) {
+    return json({
+      error: `Connected to Notion, but could not find: ${missingRequired.join(", ")}. Make sure you selected the right page when connecting, and that none of the database names were changed.`,
+      found,
+      missing,
+      all: accessibleDatabases
+    }, 404);
+  }
+  return json({ ok: true, databases: found, missing, all: accessibleDatabases });
+}
+__name(handleDiscoverDatabasesViaSearch, "handleDiscoverDatabasesViaSearch");
+__name2(handleDiscoverDatabasesViaSearch, "handleDiscoverDatabasesViaSearch");
 async function handleNotionData(request, env) {
   let payload;
   try {
@@ -275,18 +458,63 @@ async function handleNotionData(request, env) {
   } catch (e) {
     return new Response("Invalid JSON body", { status: 400, headers: CORS });
   }
-  const { token, action, licenseKey } = payload;
-
+  const { action, licenseKey } = payload;
+  let { token } = payload;
   if (action === "verify-license") {
     const result = await checkLicense(env, licenseKey);
+    if (result.valid && env.LICENSES) {
+      const rawRecord = await env.LICENSES.get(licenseKey.trim());
+      if (rawRecord) {
+        try {
+          const record = JSON.parse(rawRecord);
+          result.notionConnected = !!record.notionAccessToken;
+          result.notionWorkspaceName = record.notionWorkspaceName || null;
+        } catch (e) {
+        }
+      }
+    }
     return json(result);
   }
-
   const licenseCheck = await checkLicense(env, licenseKey);
   if (!licenseCheck.valid) {
     return json({ error: "Invalid or missing product license.", reason: licenseCheck.reason }, 403);
   }
-
+  if ((!token || token === "__oauth__") && licenseKey && env.LICENSES) {
+    const rawRecord = await env.LICENSES.get(licenseKey.trim());
+    if (rawRecord) {
+      try {
+        const record = JSON.parse(rawRecord);
+        if (record.notionAccessToken) token = record.notionAccessToken;
+      } catch (e) {
+      }
+    }
+  }
+  if (action === "disconnect-notion") {
+    if (!env.LICENSES) {
+      return json({ error: "Not configured" }, 500);
+    }
+    const trimmedKey = licenseKey.trim();
+    const rawRecord = await env.LICENSES.get(trimmedKey);
+    if (rawRecord) {
+      let record;
+      try {
+        record = JSON.parse(rawRecord);
+      } catch (e) {
+        record = {};
+      }
+      const previousWorkspaceId = record.notionWorkspaceId;
+      delete record.notionWorkspaceId;
+      delete record.notionWorkspaceName;
+      delete record.notionAccessToken;
+      delete record.connectedAt;
+      if (previousWorkspaceId) {
+        record.lastWorkspaceId = previousWorkspaceId;
+        record.lastDisconnectedAt = (/* @__PURE__ */ new Date()).toISOString();
+      }
+      await env.LICENSES.put(trimmedKey, JSON.stringify(record));
+    }
+    return json({ ok: true });
+  }
   if (action === "repurpose") {
     const { title, body } = payload;
     if (!body && !title) {
@@ -385,11 +613,12 @@ ${JSON.stringify(stats, null, 2)}`
   if (!token) {
     return json({ error: "Missing token" }, 400);
   }
-
   if (action === "discover-databases") {
     return handleDiscoverDatabases(payload, token);
   }
-
+  if (action === "discover-databases-oauth") {
+    return handleDiscoverDatabasesViaSearch(token);
+  }
   const notionHeaders = {
     Authorization: `Bearer ${token}`,
     "Notion-Version": NOTION_VERSION,
@@ -509,6 +738,7 @@ ${JSON.stringify(stats, null, 2)}`
     return { results: results2 };
   }
   __name(queryDataSource, "queryDataSource");
+  __name2(queryDataSource, "queryDataSource");
   async function queryDatabase(databaseId) {
     if (!databaseId) return { results: [] };
     let results2 = [];
@@ -543,6 +773,7 @@ ${JSON.stringify(stats, null, 2)}`
     return { results: results2 };
   }
   __name(queryDatabase, "queryDatabase");
+  __name2(queryDatabase, "queryDatabase");
   const entries = Object.entries(databases).filter(([, id]) => !!id);
   const results = {};
   for (const [key, id] of entries) {
@@ -555,7 +786,7 @@ ${JSON.stringify(stats, null, 2)}`
   return json(results);
 }
 __name(handleNotionData, "handleNotionData");
-
+__name2(handleNotionData, "handleNotionData");
 var worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -574,6 +805,12 @@ var worker_default = {
       if (request.method === "POST") {
         return handleAdminLicense(request, env);
       }
+    }
+    if (url.pathname === "/oauth/start" && request.method === "GET") {
+      return handleOAuthStart(request, env);
+    }
+    if (url.pathname === "/oauth/callback" && request.method === "GET") {
+      return handleOAuthCallback(request, env);
     }
     return env.ASSETS.fetch(request);
   }
