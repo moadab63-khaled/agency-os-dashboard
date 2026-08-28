@@ -400,23 +400,40 @@
       <h3>Connect your Notion data</h3>
       <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
     </div>
-    <p>Paste your own Notion integration token and one page link — your databases connect automatically. These are stored only in your browser, and every request is sent through Digital Secrets' Cloudflare Worker (never stored there) to reach Notion's API on your behalf.</p>
+    <p>Every request is sent through Digital Secrets' Cloudflare Worker to reach Notion's API on your behalf — your data is never stored there.</p>
 
     <div class="section-label">Your license key</div>
     <label>License Key (from your purchase)</label>
     <input id="inLicenseKey" type="text" placeholder="e.g. AOS-XXXX-XXXX-XXXX">
 
-    <label>Notion integration token</label>
-    <input id="inToken" type="password" autocomplete="off" placeholder="secret_...">
-
-    <label>Notion page link</label>
-    <input id="inPageLink" type="text" placeholder="Paste the link to your workspace page">
-    <span class="helplink" style="display:block;margin-top:4px;">Share only this one page with your integration — every database on it connects automatically.</span>
-
-    <div class="actions">
-      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" id="settingsSaveBtn" onclick="saveAndLoad()">Save &amp; Connect</button>
+    <div id="notionConnectedStatus" style="display:none;margin-top:14px;padding:12px 14px;border-radius:10px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.3);">
+      <div style="font-weight:700;color:var(--green);font-size:13px;">✅ Connected to Notion</div>
+      <div style="font-size:12.5px;color:#B8C0D4;margin-top:2px;">Workspace: <span id="notionConnectedWorkspace"></span></div>
+      <button type="button" class="btn-cancel" style="margin-top:10px;padding:7px 14px;font-size:12px;" onclick="disconnectNotion()">Disconnect</button>
     </div>
+
+    <div id="notionConnectAction" style="margin-top:14px;">
+      <button type="button" class="btn-save" style="width:100%;" onclick="connectToNotion()">🔗 Connect to Notion</button>
+      <span class="helplink" style="display:block;margin-top:6px;">Enter your license key above, then click Connect — you'll pick your Notion page on Notion's own screen. Nothing to copy or paste.</span>
+    </div>
+
+    <details style="margin-top:18px;">
+      <summary style="cursor:pointer;font-size:11.5px;color:#8A93AC;font-weight:600;">Advanced: connect manually instead</summary>
+      <div style="margin-top:8px;">
+        <label>Notion integration token</label>
+        <input id="inToken" type="password" autocomplete="off" placeholder="secret_...">
+
+        <label>Notion page link</label>
+        <input id="inPageLink" type="text" placeholder="Paste the link to your workspace page">
+        <span class="helplink" style="display:block;margin-top:4px;">Share only this one page with your integration — every database on it connects automatically.</span>
+
+        <div class="actions">
+          <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+          <button class="btn-save" id="settingsSaveBtn" onclick="saveAndLoad()">Save &amp; Connect</button>
+        </div>
+      </div>
+    </details>
+
     <span class="helplink">Where to find these: see the "Connect Your Live Dashboard" guide included with your purchase.</span>
     <span class="helplink">Dashboard <span id="settingsVersion"></span> — <button class="version-link" onclick="openChangelog()" style="font-size:11px;">what's new?</button></span>
   </div>
@@ -855,12 +872,138 @@ function openModal() {
   const cfg = loadConfig();
   if (cfg) {
     document.getElementById('inLicenseKey').value = cfg.licenseKey || '';
-    document.getElementById('inToken').value = cfg.token || '';
+    document.getElementById('inToken').value = cfg.token === '__oauth__' ? '' : (cfg.token || '');
     document.getElementById('inPageLink').value = cfg.pageLink || '';
   }
   document.getElementById('overlay').classList.remove('hidden');
+  // Show the last-known state immediately (no flash of the wrong UI), then confirm with the server.
+  setNotionConnectedStatusUI(!!(cfg && cfg.token === '__oauth__'), cfg && cfg.notionWorkspaceName);
+  refreshNotionConnectedStatus();
 }
 function closeModal() { document.getElementById('overlay').classList.add('hidden'); }
+
+function setNotionConnectedStatusUI(connected, workspaceName) {
+  const statusEl = document.getElementById('notionConnectedStatus');
+  const actionEl = document.getElementById('notionConnectAction');
+  if (!statusEl || !actionEl) return;
+  if (connected) {
+    document.getElementById('notionConnectedWorkspace').textContent = workspaceName || '(unnamed workspace)';
+    statusEl.style.display = '';
+    actionEl.style.display = 'none';
+  } else {
+    statusEl.style.display = 'none';
+    actionEl.style.display = '';
+  }
+}
+
+async function refreshNotionConnectedStatus() {
+  const cfg = loadConfig();
+  const licenseKey = (cfg && cfg.licenseKey) || document.getElementById('inLicenseKey').value.trim();
+  if (!licenseKey) { setNotionConnectedStatusUI(false); return; }
+  const result = await verifyLicenseKey(licenseKey);
+  setNotionConnectedStatusUI(!!result.notionConnected, result.notionWorkspaceName);
+  if (cfg && result.notionConnected !== undefined) {
+    cfg.notionWorkspaceName = result.notionWorkspaceName || null;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  }
+}
+
+function connectToNotion() {
+  const licenseKey = document.getElementById('inLicenseKey').value.trim();
+  if (!licenseKey) {
+    alert('Please enter your license key first. You received this at purchase — check the "Connect Your Live Dashboard" guide if you can\'t find it.');
+    return;
+  }
+  const cfg = loadConfig() || {};
+  cfg.licenseKey = licenseKey;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  window.location.href = '/oauth/start?licenseKey=' + encodeURIComponent(licenseKey);
+}
+
+async function syncOAuthDatabases(licenseKey) {
+  try {
+    const res = await notionFetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'discover-databases-oauth', licenseKey })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      return { ok: false, error: (data && data.error) || `Server error (${res.status})` };
+    }
+    return { ok: true, databases: data.databases || {} };
+  } catch (e) {
+    return { ok: false, error: 'Could not reach the server. Check your connection and try again.' };
+  }
+}
+
+async function disconnectNotion() {
+  const cfg = loadConfig();
+  const licenseKey = cfg && cfg.licenseKey;
+  if (!licenseKey) return;
+  if (!confirm('Disconnect this Notion workspace? You can reconnect (or connect a different account) afterwards.')) return;
+  try {
+    await notionFetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'disconnect-notion', licenseKey })
+    });
+  } catch (e) {}
+  const newCfg = { licenseKey };  localStorage.setItem(STORAGE_KEY, JSON.stringify(newCfg));
+  setNotionConnectedStatusUI(false);
+  fetchAndRender();
+  showToast('Disconnected. You can connect a different Notion account below.');
+}
+
+const CONNECT_MESSAGES = {
+  success: null,
+  denied: 'Notion connection was not completed — you can try again whenever you\'re ready.',
+  expired: 'That connection attempt expired. Please click "Connect to Notion" again.',
+  invalid_license: 'That license key was not recognized. Double-check it against your purchase confirmation.',
+  missing_license: 'Please enter your license key before connecting.',
+  workspace_mismatch: 'This license key is already connected to a different Notion account. If that should be you, contact support to reset it.',
+  cooldown: 'This license was recently disconnected from another Notion account. For security, reconnecting a different account is on a short delay — contact support if you need this resolved sooner.',
+  not_configured: 'The dashboard cannot complete this connection right now. Please try again shortly or contact support.',
+  bad_request: 'Something went wrong completing the connection. Please try again.',
+  token_exchange_failed: 'Could not finish connecting to Notion. Please try again.'
+};
+
+async function handleConnectRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const connect = params.get('connect');
+  if (!connect) return false;
+  params.delete('connect');
+  const newQs = params.toString();
+  window.history.replaceState({}, '', window.location.pathname + (newQs ? '?' + newQs : ''));
+
+  if (connect === 'success') {
+    const cfg = loadConfig() || {};
+    cfg.token = '__oauth__';
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    const licenseKey = cfg.licenseKey;
+    const discovery = licenseKey ? await syncOAuthDatabases(licenseKey) : { ok: false, error: 'Missing license key' };
+    if (!discovery.ok) {
+      alert(discovery.error || 'Connected to Notion, but could not find your databases. Please check Settings.');
+      fetchAndRender();
+      return true;
+    }
+    cfg.databases = discovery.databases;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    verifyLicenseKey(licenseKey).then((result) => {
+      const latestCfg = loadConfig() || cfg;
+      latestCfg.notionWorkspaceName = result.notionWorkspaceName || null;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(latestCfg));
+    });
+    showToast('✅ Connected to Notion!');
+    fetchAndRender();
+    return true;
+  }
+
+  const message = CONNECT_MESSAGES[connect];
+  if (message) alert(message);
+  return false;
+}
+
 
 async function discoverDatabases(token, pageLink, licenseKey) {
   try {
@@ -3144,7 +3287,9 @@ async function fetchAndRender() {
 }
 
 renderFooterVersion();
-fetchAndRender();
+handleConnectRedirect().then((alreadyRendered) => {
+  if (!alreadyRendered) fetchAndRender();
+});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
