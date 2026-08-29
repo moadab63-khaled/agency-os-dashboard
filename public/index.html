@@ -68,7 +68,7 @@
   .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 12px; }
   .header h1 { font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.3px; color: var(--text); }
 
-  .toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+  .toolbar { margin-bottom: 12px; }
   .toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
   .badge { position: relative; display: inline-flex; align-items: center; gap: 7px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.35); color: var(--green); font-size: 11.5px; font-weight: 700; letter-spacing: 0.2px; padding: 6px 13px 6px 11px; border-radius: 999px; }
@@ -98,7 +98,7 @@
   .gear:hover { border-color: var(--border-strong); background: var(--surface-hover); transform: translateY(-1px); }
   .gear svg { width: 15px; height: 15px; }
 
-  .greeting { font-size: 14.5px; font-weight: 500; color: var(--text-dim); margin-bottom: 10px; }
+  .greeting { font-family: 'Cairo', sans-serif; font-size: 17px; font-weight: 700; color: #B8C0D4; margin-bottom: 14px; letter-spacing: -0.1px; }
   .note { font-size: 12.5px; color: var(--text-dim); margin-bottom: 22px; line-height: 1.55; }
   .app-footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-faint); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
   .app-footer .version-link { background: none; border: none; color: var(--text-faint); font-size: 11px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; padding: 0; }
@@ -351,19 +351,20 @@
       </div>
       <div class="toolbar">
         <span id="statusBadge" class="badge off">Not connected</span>
-        <div class="toolbar-right">
-          <div style="position:relative;">
-            <input type="text" id="globalSearchInput" placeholder="Search everything…"
-                   class="search-input" style="margin-bottom:0;width:160px;"
-                   oninput="handleGlobalSearchInput(this.value)"
-                   onfocus="handleGlobalSearchInput(this.value)"
-                   autocomplete="off">
-            <div id="globalSearchResults" style="display:none;position:absolute;top:calc(100% + 6px);max-height:340px;overflow-y:auto;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:var(--shadow-lg);z-index:15;padding:6px;"></div>
-          </div>
-          <button class="demo-btn" id="demoBtn" onclick="loadDemoData()">👀 See Demo Data</button>
-          <button class="gear" id="openNotionBtn" style="display:none;" onclick="openInNotion()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>Open in Notion</button>
-          <button class="gear" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings</button>
-        </div>
+      </div>
+      <div style="position:relative; margin-bottom:12px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; left:13px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-faint); pointer-events:none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="globalSearchInput" placeholder="Search everything…"
+               class="search-input" style="margin-bottom:0; padding-left:36px;"
+               oninput="handleGlobalSearchInput(this.value)"
+               onfocus="handleGlobalSearchInput(this.value)"
+               autocomplete="off">
+        <div id="globalSearchResults" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;max-height:340px;overflow-y:auto;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:var(--shadow-lg);z-index:15;padding:6px;"></div>
+      </div>
+      <div class="toolbar-right" style="margin-bottom:24px;">
+        <button class="demo-btn" id="demoBtn" onclick="loadDemoData()">👀 See Demo Data</button>
+        <button class="gear" id="openNotionBtn" style="display:none;" onclick="openInNotion()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>Open in Notion</button>
+        <button class="gear" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings</button>
       </div>
 
       <div class="tabs" id="tabsNav">
@@ -865,12 +866,20 @@ function updateOpenNotionBtnVisibility(connected) {
 
 function openInNotion() {
   const cfg = loadConfig();
-  const dbs = cfg && cfg.databases;
+  if (!cfg) return;
+  // Manual-connect buyers shared one specific page link in Settings — that's
+  // the real main workspace page, and opening it gives the buyer their own
+  // logged-in view with full navigation to every database. Always prefer it.
+  if (cfg.pageLink) {
+    window.open(cfg.pageLink, '_blank', 'noopener');
+    return;
+  }
+  // OAuth buyers never typed a page link (Notion's picker handled sharing),
+  // so there is no main-page URL saved locally. Falling back to a database
+  // ID still gets the buyer into their own workspace, but lands them on a
+  // specific database's table instead of the top-level page.
+  const dbs = cfg.databases;
   if (!dbs) return;
-  // Any database ID doubles as a link into the buyer's workspace — Notion
-  // opens straight to that database, and from there the buyer can navigate
-  // to any other page in the same shared workspace. Clients is required
-  // for both editions, so it's the most reliable one to link to.
   const targetId = dbs.clients || dbs.finance || dbs.projects || dbs.tasks || dbs.content || dbs.team;
   if (!targetId) return;
   const cleanId = targetId.replace(/-/g, '');
