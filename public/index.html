@@ -95,6 +95,7 @@
   .gear:hover { border-color: var(--border-strong); background: var(--surface-hover); transform: translateY(-1px); }
   .gear svg { width: 15px; height: 15px; }
 
+  .greeting { font-size: 12.5px; color: var(--text-dim); margin-bottom: 10px; }
   .note { font-size: 12.5px; color: var(--text-dim); margin-bottom: 22px; line-height: 1.55; }
   .app-footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-faint); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
   .app-footer .version-link { background: none; border: none; color: var(--text-faint); font-size: 11px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; padding: 0; }
@@ -341,9 +342,10 @@
 
   <div class="main">
     <div class="wrap">
+      <div class="greeting" id="greetingText"></div>
       <div class="header">
         <h1>Agency OS — Live Command Center</h1>
-        <div style="display:flex; gap:8px; align-items:center;">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
           <span id="statusBadge" class="badge off">Not connected</span>
           <div style="position:relative;">
             <input type="text" id="globalSearchInput" placeholder="Search everything…"
@@ -354,6 +356,7 @@
             <div id="globalSearchResults" style="display:none;position:absolute;top:calc(100% + 6px);max-height:340px;overflow-y:auto;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;box-shadow:var(--shadow-lg);z-index:15;padding:6px;"></div>
           </div>
           <button class="demo-btn" id="demoBtn" onclick="loadDemoData()">👀 See Demo Data</button>
+          <button class="gear" id="openNotionBtn" style="display:none;" onclick="openInNotion()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>Open in Notion</button>
           <button class="gear" onclick="openModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings</button>
         </div>
       </div>
@@ -725,6 +728,18 @@ function renderFooterVersion() {
   if (el2) el2.textContent = 'v' + APP_VERSION;
 }
 
+function renderGreeting() {
+  const el = document.getElementById('greetingText');
+  if (!el) return;
+  const now = new Date();
+  const hour = now.getHours();
+  let greeting = 'Good evening';
+  if (hour < 12) greeting = 'Good morning';
+  else if (hour < 18) greeting = 'Good afternoon';
+  const dateStr = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  el.textContent = greeting + ' 👋 · ' + dateStr;
+}
+
 function openChangelog() {
   document.getElementById('changelogCurrentVersion').textContent = 'v' + APP_VERSION;
   const list = document.getElementById('changelogList');
@@ -836,6 +851,25 @@ function exitDemoMode() {
 function updateDemoBtnVisibility(connected) {
   const demoBtn = document.getElementById('demoBtn');
   if (demoBtn) demoBtn.style.display = connected ? 'none' : '';
+}
+
+function updateOpenNotionBtnVisibility(connected) {
+  const btn = document.getElementById('openNotionBtn');
+  if (btn) btn.style.display = connected ? '' : 'none';
+}
+
+function openInNotion() {
+  const cfg = loadConfig();
+  const dbs = cfg && cfg.databases;
+  if (!dbs) return;
+  // Any database ID doubles as a link into the buyer's workspace — Notion
+  // opens straight to that database, and from there the buyer can navigate
+  // to any other page in the same shared workspace. Clients is required
+  // for both editions, so it's the most reliable one to link to.
+  const targetId = dbs.clients || dbs.finance || dbs.projects || dbs.tasks || dbs.content || dbs.team;
+  if (!targetId) return;
+  const cleanId = targetId.replace(/-/g, '');
+  window.open('https://www.notion.so/' + cleanId, '_blank', 'noopener');
 }
 
 function loadConfig() {
@@ -2777,6 +2811,16 @@ document.addEventListener('click', function(e) {
   }
 });
 
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  const box = document.getElementById('globalSearchResults');
+  if (box && box.style.display !== 'none') {
+    box.style.display = 'none';
+    const input = document.getElementById('globalSearchInput');
+    if (input) input.blur();
+  }
+});
+
 function renderDashboard(data) {
   const clients = (data.clients && data.clients.results) || [];
   const finance = (data.finance && data.finance.results) || [];
@@ -3218,6 +3262,7 @@ async function fetchAndRender() {
     TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
     document.body.classList.remove('is-connected');
     updateDemoBtnVisibility(false);
+    updateOpenNotionBtnVisibility(false);
     return;
   }
   updateDemoBtnVisibility(true);
@@ -3264,11 +3309,13 @@ async function fetchAndRender() {
       TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
       document.body.classList.remove('is-connected');
       updateDemoBtnVisibility(false);
+      updateOpenNotionBtnVisibility(false);
       return;
     }
 
     badge.innerHTML = '<span class="live-dot"></span>Connected — live';
     badge.className = 'badge';
+    updateOpenNotionBtnVisibility(true);
 
     if (failedDbs.length) {
       note.textContent = `Showing your live data — but ${failedDbs.join(', ')} could not be loaded right now (temporary Notion error). Everything else is up to date; try reconnecting in a moment for the rest.`;
@@ -3283,10 +3330,12 @@ async function fetchAndRender() {
     TAB_NAMES.forEach(n => { const el = document.getElementById('tab-' + n); if (el) el.innerHTML = ''; });
     document.body.classList.remove('is-connected');
     updateDemoBtnVisibility(false);
+    updateOpenNotionBtnVisibility(false);
   }
 }
 
 renderFooterVersion();
+renderGreeting();
 handleConnectRedirect().then((alreadyRendered) => {
   if (!alreadyRendered) fetchAndRender();
 });
