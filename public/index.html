@@ -980,7 +980,7 @@ async function syncOAuthDatabases(licenseKey) {
     if (!res.ok || !data.ok) {
       return { ok: false, error: (data && data.error) || `Server error (${res.status})` };
     }
-    return { ok: true, databases: data.databases || {} };
+    return { ok: true, databases: data.databases || {}, mainPageUrl: data.mainPageUrl || null };
   } catch (e) {
     return { ok: false, error: 'Could not reach the server. Check your connection and try again.' };
   }
@@ -1037,6 +1037,7 @@ async function handleConnectRedirect() {
       return true;
     }
     cfg.databases = discovery.databases;
+    if (discovery.mainPageUrl) cfg.pageLink = discovery.mainPageUrl;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
     verifyLicenseKey(licenseKey).then((result) => {
       const latestCfg = loadConfig() || cfg;
