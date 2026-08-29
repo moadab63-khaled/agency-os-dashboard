@@ -15,6 +15,9 @@
       "id": "fb3a645b743749618215cf310d10a610"
     }
   ],
+  "vars": {
+    "NOTION_CLIENT_ID": "3cad872b-594c-81e5-b186-0037d5879fd7"
+  },
   "observability": {
     "enabled": true
   }
