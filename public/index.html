@@ -964,6 +964,17 @@ function connectToNotion() {
     return;
   }
   const cfg = loadConfig() || {};
+  // Switching to a different license key than the one currently stored means
+  // any previously-connected workspace's token/pageLink/databases belongs to
+  // that OLD key, not this one. Clear them now -- before redirecting -- so
+  // that if the OAuth flow below is cancelled, denied, or expires, the
+  // dashboard never renders a stale, mismatched workspace under the new key.
+  if (cfg.licenseKey && cfg.licenseKey !== licenseKey) {
+    delete cfg.token;
+    delete cfg.pageLink;
+    delete cfg.databases;
+    delete cfg.notionWorkspaceName;
+  }
   cfg.licenseKey = licenseKey;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
   window.location.href = '/oauth/start?licenseKey=' + encodeURIComponent(licenseKey);
@@ -1037,7 +1048,12 @@ async function handleConnectRedirect() {
       return true;
     }
     cfg.databases = discovery.databases;
-    if (discovery.mainPageUrl) cfg.pageLink = discovery.mainPageUrl;
+    // Always overwrite pageLink on every (re)connection -- even to null when the
+    // server doesn't return one this time. A previous connection's pageLink must
+    // never survive into a new connection's config, or openInNotion() (which
+    // prefers pageLink over the freshly-discovered databases) can silently open
+    // the wrong Notion page from an earlier license key / workspace.
+    cfg.pageLink = discovery.mainPageUrl || null;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
     verifyLicenseKey(licenseKey).then((result) => {
       const latestCfg = loadConfig() || cfg;
