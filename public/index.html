@@ -2957,6 +2957,7 @@ function renderDashboard(data) {
   const hasProjects = !!(data.projects);
   const hasTasks = !!(data.tasks);
   const hasContent = !!(data.content);
+  const hasTeam = !!(data.team);
 
   const activeProjectsCount = projects.filter(p => {
     const status = selectName(findProp(p.properties, STATUS_NAMES));
@@ -3212,7 +3213,7 @@ function renderDashboard(data) {
       </div>
       <div class="empty" style="padding:4px 0;">Use this during a call with a new prospect to capture their info straight into Notion.</div>
     </div>
-    <div class="row">
+    ${hasTeam ? `<div class="row">
       <div class="panel">
         <div class="panel-head">
           <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Client Health</h2>
@@ -3236,7 +3237,21 @@ function renderDashboard(data) {
         <div class="table-header"><span>Member</span><span>Workload</span></div>
         ${teamRows}
       </div>
-    </div>
+    </div>` : `<div class="panel">
+      <div class="panel-head">
+        <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Client Health</h2>
+        <span style="display:flex; gap:6px;">
+          <button class="add-btn" onclick="recalculateHealthScores()" id="recalcBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Recalculate</button>
+          <button class="add-btn" onclick="exportClientsCsv()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Export CSV</button>
+          <button class="add-btn" onclick="triggerClientImport()" id="clientImportBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Import CSV</button>
+          <input type="file" id="clientImportFile" accept=".csv" style="display:none" onchange="handleClientImportFile(event)">
+          <button class="add-btn" onclick="openClientModal()">+ Add Client</button>
+        </span>
+      </div>
+      <input type="text" class="search-input" placeholder="Search clients…" oninput="filterPanelRows(this, 'healthList')">
+      <div class="table-header"><span>Client</span><span>Health</span></div>
+      <div id="healthList">${healthRows}</div>
+    </div>`}
   `;
 
   const meetingPanel = `
