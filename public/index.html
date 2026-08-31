@@ -326,6 +326,10 @@
   .tab-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
   .tab-btn.active { background: var(--surface-hover); color: var(--text); }
   .tab-content.hidden { display: none; }
+  @media (max-width: 639px) {
+    body.is-connected #tabsNav .tab-btn { flex-direction: column; gap: 4px; font-size: 10.5px; padding: 9px 4px; line-height: 1.25; white-space: normal; text-align: center; }
+    body.is-connected #tabsNav .tab-btn svg { width: 16px; height: 16px; }
+  }
   @media (min-width: 640px) { .tab-btn { flex: 1 0 auto; font-size: 13px; padding: 10px 16px; } }
   @media (min-width: 980px) {
     body.is-connected #tabsNav { display: none; }
@@ -3136,7 +3140,7 @@ function renderDashboard(data) {
     <div class="panel" style="margin-top:14px;">
       <div class="panel-head">
         <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Finance</h2>
-        <span style="display:flex; gap:6px;">
+        <span style="display:flex; gap:6px; flex-wrap: wrap; row-gap: 6px;">
           <button class="add-btn" onclick="generateFinancialInsights()" id="insightsBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a6 6 0 0 0-4 10.47c.47.46.8 1.05.93 1.7L9 15h6l.07-.83c.13-.65.46-1.24.93-1.7A6 6 0 0 0 12 2Z"></path></svg>Insights</button>
           <button class="add-btn" onclick="exportFinanceCsv()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Export CSV</button>
           <button class="add-btn" onclick="openFinanceModal()">+ Add Entry</button>
@@ -3221,7 +3225,7 @@ function renderDashboard(data) {
       <div class="panel">
         <div class="panel-head">
           <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Client Health</h2>
-          <span style="display:flex; gap:6px;">
+          <span style="display:flex; gap:6px; flex-wrap: wrap; row-gap: 6px;">
             <button class="add-btn" onclick="recalculateHealthScores()" id="recalcBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Recalculate</button>
             <button class="add-btn" onclick="exportClientsCsv()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Export CSV</button>
             <button class="add-btn" onclick="triggerClientImport()" id="clientImportBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Import CSV</button>
@@ -3244,7 +3248,7 @@ function renderDashboard(data) {
     </div>` : `<div class="panel">
       <div class="panel-head">
         <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Client Health</h2>
-        <span style="display:flex; gap:6px;">
+        <span style="display:flex; gap:6px; flex-wrap: wrap; row-gap: 6px;">
           <button class="add-btn" onclick="recalculateHealthScores()" id="recalcBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Recalculate</button>
           <button class="add-btn" onclick="exportClientsCsv()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Export CSV</button>
           <button class="add-btn" onclick="triggerClientImport()" id="clientImportBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Import CSV</button>
