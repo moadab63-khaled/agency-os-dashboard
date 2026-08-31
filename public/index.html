@@ -69,8 +69,13 @@
   .header h1 { font-family: 'Cairo', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.3px; color: var(--text); }
 
   .toolbar { margin-bottom: 12px; }
-  .toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .toolbar-right > button { flex: 1 1 0; min-width: 130px; justify-content: center; }
+  .toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+  .toolbar-right > button { flex: 1 1 0; min-width: 0; justify-content: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 420px) {
+    .toolbar-right { gap: 6px; }
+    .toolbar-right > button { padding: 8px 10px; font-size: 12px; gap: 5px; }
+    .toolbar-right > button svg { width: 13px; height: 13px; }
+  }
 
   .badge { position: relative; display: inline-flex; align-items: center; gap: 7px; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.35); color: var(--green); font-size: 11.5px; font-weight: 700; letter-spacing: 0.2px; padding: 6px 13px 6px 11px; border-radius: 999px; }
   .badge .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; position: relative; }
@@ -328,7 +333,6 @@
     #tabsNavDesktop .tab-btn { justify-content: flex-start; padding: 10px 13px; border-radius: 10px; position: relative; font-size: 13.5px; }
     #tabsNavDesktop .tab-btn svg { width: 16px; height: 16px; }
     #tabsNavDesktop .tab-btn.active { background: rgba(232,194,92,0.1); color: var(--text); font-weight: 700; }
-    #tabsNavDesktop .tab-btn.active::before { content: ''; position: absolute; left: -11px; top: 50%; transform: translateY(-50%); width: 3px; height: 18px; border-radius: 3px; background: var(--gold); }
     #tabsNavDesktop .tab-btn:not(.active):hover { background: rgba(255,255,255,0.03); color: #C7CEDE; }
   }
 </style>
