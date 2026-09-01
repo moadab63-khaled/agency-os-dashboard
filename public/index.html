@@ -767,6 +767,43 @@
   </div>
 </div>
 
+<!-- Project Handoff / Close-out modal -->
+<div class="overlay hidden" id="handoffOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Close out project</h3>
+      <button class="modal-close" onclick="closeHandoffModal()" aria-label="Close">&times;</button>
+    </div>
+    <p id="handoffModalDesc">Wrap up this project for the client — a clear handoff message, final status, and their sign-off.</p>
+
+    <input type="hidden" id="handoffProjectId">
+
+    <label>Handoff Notes</label>
+    <textarea id="hoNotes" placeholder="What's being delivered, access/credentials, next steps for the client..."></textarea>
+    <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+      <button type="button" class="add-btn" onclick="generateHandoffSummary()" id="handoffAiBtn"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6L12 2z"></path></svg>Generate with AI</button>
+    </div>
+
+    <label>Handoff Status</label>
+    <select id="hoStatus">
+      <option value="Not Started">Not Started</option>
+      <option value="Ready for Handoff">Ready for Handoff</option>
+      <option value="Delivered">Delivered</option>
+    </select>
+
+    <label style="display:flex;align-items:center;gap:9px;margin-top:16px;">
+      <input type="checkbox" id="hoSignOff" style="width:auto;flex-shrink:0;">
+      <span style="margin:0;font-weight:600;color:#B8C0D4;">Client has signed off / confirmed receipt</span>
+    </label>
+
+    <div class="actions">
+      <button class="btn-cancel" onclick="closeHandoffModal()">Cancel</button>
+      <button class="btn-save" id="handoffSaveBtn" onclick="saveHandoff()">Save</button>
+    </div>
+    <div class="error-text" id="handoffError"></div>
+  </div>
+</div>
+
 <script>
 const STORAGE_KEY = 'agencyOsDashboardConfig';
 let isDemoMode = false;
@@ -779,8 +816,17 @@ function demoGuard() {
   return false;
 }
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const CHANGELOG = [
+  {
+    version: '1.2.0',
+    date: 'September 2026',
+    notes: [
+      'New: Project Handoff / Close-out — mark a project Ready for Handoff or Delivered, track client sign-off, and write (or AI-draft) a client-ready handoff summary',
+      'The "Generate with AI" button drafts the handoff summary from the project\'s deliverables and completed tasks — review and edit before saving',
+      'Optional, like Profitability — if you don\'t add the Handoff fields to a project, everything else works exactly as before'
+    ]
+  },
   {
     version: '1.1.0',
     date: 'September 2026',
@@ -891,11 +937,13 @@ const DEMO_DATA = {
   projects: { results: [
     { id: 'demo-proj-1', properties: {
       'Name': { title: [{ plain_text: 'Brand Refresh' }] },
-      'Status': { select: { name: 'In Progress' } }, 'Due Date': { date: { start: '2026-09-10' } }
+      'Status': { select: { name: 'In Progress' } }, 'Due Date': { date: { start: '2026-09-10' } },
+      'Handoff Status': { select: { name: 'Ready for Handoff' } }, 'Client Sign-off': { checkbox: false }
     }},
     { id: 'demo-proj-2', properties: {
       'Name': { title: [{ plain_text: 'Q3 Website Sprint' }] },
-      'Status': { select: { name: 'In Progress' } }, 'Due Date': { date: { start: '2026-08-25' } }
+      'Status': { select: { name: 'In Progress' } }, 'Due Date': { date: { start: '2026-08-25' } },
+      'Handoff Status': { select: { name: 'Not Started' } }, 'Client Sign-off': { checkbox: false }
     }}
   ]},
   tasks: { results: [
@@ -1310,6 +1358,7 @@ function dateVal(p) {
   return new Date(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate());
 }
 function dateStr(p) { return (p && p.date && p.date.start) || ''; }
+function checkboxVal(p) { return !!(p && p.checkbox); }
 
 const STATUS_NAMES = ['Status', 'Stage', 'State'];
 const NAME_NAMES = ['Name', 'Title'];
@@ -1330,6 +1379,11 @@ const TIME_ENTRY_RATE_NAMES = ['Rate', 'Hourly Rate'];
 const TIME_ENTRY_DATE_NAMES = ['Date'];
 const TIME_ENTRY_PROJECT_RELATION_NAMES = ['Project', 'Related Project'];
 const TIME_ENTRY_TEAM_RELATION_NAMES = ['Team Member', 'Assigned To', 'Member'];
+const HANDOFF_STATUS_NAMES = ['Handoff Status'];
+const HANDOFF_DATE_NAMES = ['Handoff Date'];
+const HANDOFF_NOTES_NAMES = ['Handoff Notes'];
+const CLIENT_SIGNOFF_NAMES = ['Client Sign-off', 'Client Signoff', 'Sign-off'];
+const PROJECT_TASKS_RELATION_NAMES = ['Tasks', 'Related Tasks'];
 const DONE_VALUES = ['done', 'completed', 'closed', 'published', 'posted', 'live', 'archived', 'cancelled', 'churned', 'delivered'];
 
 function isDoneLike(status) {
@@ -2665,6 +2719,120 @@ async function saveTimeEntry() {
   }
 }
 
+// --- Project Handoff / Close-out ---
+function handoffBadge(project) {
+  const props = project.properties || {};
+  const status = selectName(findProp(props, HANDOFF_STATUS_NAMES)) || 'Not Started';
+  const signedOff = checkboxVal(findProp(props, CLIENT_SIGNOFF_NAMES));
+  if (status === 'Not Started') return '';
+  let tone = 'yellow';
+  let label = status;
+  if (status === 'Delivered') { tone = signedOff ? 'green' : 'yellow'; label = signedOff ? 'Delivered · Signed off' : 'Delivered'; }
+  return badgePill(label, tone);
+}
+
+function openHandoffModal(projectId) {
+  const page = lastProjectPages[projectId];
+  if (!page) return;
+  const props = page.properties || {};
+  const name = titleText(findProp(props, NAME_NAMES)) || 'this project';
+  document.getElementById('handoffError').style.display = 'none';
+  document.getElementById('handoffProjectId').value = projectId;
+  document.getElementById('handoffModalDesc').textContent = `Wrap up "${name}" for the client — a clear handoff message, final status, and their sign-off.`;
+  document.getElementById('hoNotes').value = richText(findProp(props, HANDOFF_NOTES_NAMES)) || '';
+  const currentStatus = selectName(findProp(props, HANDOFF_STATUS_NAMES));
+  ensureSelectHasValue(document.getElementById('hoStatus'), currentStatus);
+  if (!document.getElementById('hoStatus').value) document.getElementById('hoStatus').value = 'Not Started';
+  document.getElementById('hoSignOff').checked = checkboxVal(findProp(props, CLIENT_SIGNOFF_NAMES));
+  document.getElementById('handoffOverlay').classList.remove('hidden');
+}
+
+function closeHandoffModal() {
+  document.getElementById('handoffOverlay').classList.add('hidden');
+}
+
+async function generateHandoffSummary() {
+  const projectId = document.getElementById('handoffProjectId').value;
+  const page = lastProjectPages[projectId];
+  if (!page) return;
+  const props = page.properties || {};
+  const name = titleText(findProp(props, NAME_NAMES)) || 'Untitled project';
+  const deliverables = richText(props['Deliverables']) || '';
+  const linkedTaskIds = relationIds(findProp(props, PROJECT_TASKS_RELATION_NAMES));
+  const completedTasks = linkedTaskIds.map(id => {
+    const t = lastTaskPages[id];
+    if (!t) return null;
+    const status = anyStatusName(findProp(t.properties, STATUS_NAMES));
+    if (!isDoneLike(status)) return null;
+    const tp = taskTitleProp && t.properties[taskTitleProp] ? t.properties[taskTitleProp] : findProp(t.properties, NAME_NAMES);
+    return titleText(tp);
+  }).filter(Boolean);
+
+  const btn = document.getElementById('handoffAiBtn');
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  try {
+    const res = await notionFetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'handoff-summary', projectName: name, deliverables, completedTasks })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Could not generate summary');
+    document.getElementById('hoNotes').value = data.result;
+  } catch (err) {
+    alert('Could not generate summary (' + err.message + ').');
+  } finally {
+    if (btn) { btn.innerHTML = originalHtml; btn.disabled = false; }
+  }
+}
+
+function buildHandoffProperties() {
+  const props = {};
+  const notes = document.getElementById('hoNotes').value.trim();
+  const status = document.getElementById('hoStatus').value;
+  const signedOff = document.getElementById('hoSignOff').checked;
+  props['Handoff Notes'] = { rich_text: [{ text: { content: notes } }] };
+  props['Handoff Status'] = { select: { name: status } };
+  props['Client Sign-off'] = { checkbox: signedOff };
+  if (status === 'Delivered') {
+    props['Handoff Date'] = { date: { start: new Date().toISOString().slice(0, 10) } };
+  }
+  return props;
+}
+
+async function saveHandoff() {
+  if (demoGuard()) return;
+  const cfg = loadConfig();
+  const projectId = document.getElementById('handoffProjectId').value;
+  const errorEl = document.getElementById('handoffError');
+  errorEl.style.display = 'none';
+
+  const properties = buildHandoffProperties();
+  const saveBtn = document.getElementById('handoffSaveBtn');
+  saveBtn.textContent = 'Saving…';
+  saveBtn.disabled = true;
+
+  try {
+    const res = await notionFetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: cfg.token, action: 'update', pageId: projectId, properties })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
+    closeHandoffModal();
+    showToast('✓ Handoff saved');
+    fetchAndRender();
+  } catch (err) {
+    errorEl.textContent = 'Could not save (' + err.message + ').';
+    errorEl.style.display = 'block';
+  } finally {
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = false;
+  }
+}
+
 // --- Project Profitability Score ---
 // Revenue: sum of Finance entries (Type=Income, Invoice Status=Paid) whose
 // Project relation includes this project. Cost: sum over Time Entries linked
@@ -3413,6 +3581,8 @@ function renderDashboard(data) {
         <span style="display:flex;align-items:center;gap:8px;">
           ${badgePill(status, statusDot(status))}
           ${profitabilityBarHtml(p.id)}
+          ${handoffBadge(p)}
+          <button class="edit-btn" onclick="openHandoffModal('${p.id}')" title="Close out / handoff"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></button>
           <button class="edit-btn" onclick="openProjectModal('${p.id}')" title="Edit project"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
           <button class="del-btn" onclick="deleteRecord('${p.id}')" title="Delete project"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
         </span>
