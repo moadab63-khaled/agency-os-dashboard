@@ -620,6 +620,36 @@ ${JSON.stringify(stats, null, 2)}`
       return json({ error: err.message }, 502);
     }
   }
+  if (action === "handoff-summary") {
+    const { projectName, deliverables, completedTasks } = payload;
+    if (!projectName) {
+      return json({ error: "Missing projectName" }, 400);
+    }
+    try {
+      const aiResult = await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
+        messages: [
+          {
+            role: "system",
+            content: "You write client-facing project handoff notes for a marketing/creative agency. Given a project name, its deliverables description, and a list of completed task titles, write a short, professional handoff summary in plain text (no markdown headers): 1) one sentence confirming the project is complete and what was delivered, 2) a short bullet-style list of the concrete deliverables/completed items, 3) one sentence inviting the client to review and reach out with questions. Keep it under 120 words, warm but professional, and written as if the agency is sending it directly to the client."
+          },
+          {
+            role: "user",
+            content: `Project: ${projectName}
+
+Deliverables: ${deliverables || "(none specified)"}
+
+Completed tasks:
+${(completedTasks || []).map((t) => `- ${t}`).join("\n") || "(none listed)"}`
+          }
+        ],
+        max_tokens: 400
+      });
+      const text = coerceAiText(aiResult.response);
+      return json({ result: text });
+    } catch (err) {
+      return json({ error: err.message }, 502);
+    }
+  }
   if (action === "meeting-to-action") {
     const { notes } = payload;
     if (!notes) {
