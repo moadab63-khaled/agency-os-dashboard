@@ -501,8 +501,10 @@
     <select id="cStatus">
       <option value="">— unchanged —</option>
       <option value="Lead">Lead</option>
+      <option value="Onboarding">Onboarding</option>
       <option value="Active">Active</option>
-      <option value="Inactive">Inactive</option>
+      <option value="Completed">Completed</option>
+      <option value="Churned">Churned</option>
     </select>
 
     <label>Health Status</label>
@@ -585,6 +587,10 @@
       <option value="In progress">In progress</option>
       <option value="Done">Done</option>
     </select>
+
+    <label>Blocked By <span style="font-weight:400;color:var(--text-faint);">(ctrl/cmd-click to select more than one)</span></label>
+    <select id="tBlockedBy" multiple size="4"></select>
+    <div id="tConflictInfo" style="font-size:12px;color:var(--amber);margin-top:8px;display:none;"></div>
 
     <div id="autoAssignInfo" style="font-size:12px;color:#8A93AC;margin-top:10px;"></div>
 
@@ -816,8 +822,17 @@ function demoGuard() {
   return false;
 }
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const CHANGELOG = [
+  {
+    version: '1.3.0',
+    date: 'September 2026',
+    notes: [
+      'New: Task Dependencies — mark a task "Blocked By" other tasks; blocked tasks get a 🔒 badge, and an impossible due-date order (blocker due after the task it blocks) is flagged with a ⚠ Date conflict badge',
+      'Editing a blocked task now shows exactly which incomplete tasks are holding it up',
+      'Optional, like Profitability and Handoff — if you don\'t use the "Blocked By" field, tasks behave exactly as before'
+    ]
+  },
   {
     version: '1.2.0',
     date: 'September 2026',
@@ -948,8 +963,8 @@ const DEMO_DATA = {
   ]},
   tasks: { results: [
     { id: 'demo-task-1', properties: { 'Name': { title: [{ plain_text: 'Send Brightline moodboard v2' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: '2026-08-24' } } }},
-    { id: 'demo-task-2', properties: { 'Name': { title: [{ plain_text: 'Fix Northwind checkout bug' }] }, 'Status': { status: { name: 'In progress' } }, 'Due Date': { date: { start: '2026-08-22' } } }},
-    { id: 'demo-task-3', properties: { 'Name': { title: [{ plain_text: 'Prep Q3 sprint retro' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: '2026-09-01' } } }}
+    { id: 'demo-task-2', properties: { 'Name': { title: [{ plain_text: 'Fix Northwind checkout bug' }] }, 'Status': { status: { name: 'In progress' } }, 'Due Date': { date: { start: '2026-08-22' } }, 'Blocked By': { relation: [{ id: 'demo-task-3' }] } }},
+    { id: 'demo-task-3', properties: { 'Name': { title: [{ plain_text: 'Prep Q3 sprint retro' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: '2026-09-01' } }, 'Blocked By': { relation: [{ id: 'demo-task-1' }] } }}
   ]},
   content: { results: [
     { id: 'demo-content-1', properties: {
@@ -1384,6 +1399,8 @@ const HANDOFF_DATE_NAMES = ['Handoff Date'];
 const HANDOFF_NOTES_NAMES = ['Handoff Notes'];
 const CLIENT_SIGNOFF_NAMES = ['Client Sign-off', 'Client Signoff', 'Sign-off'];
 const PROJECT_TASKS_RELATION_NAMES = ['Tasks', 'Related Tasks'];
+const TASK_BLOCKED_BY_NAMES = ['Blocked By'];
+const TASK_BLOCKING_NAMES = ['Blocking'];
 const DONE_VALUES = ['done', 'completed', 'closed', 'published', 'posted', 'live', 'archived', 'cancelled', 'churned', 'delivered'];
 
 function isDoneLike(status) {
@@ -1480,7 +1497,7 @@ function exportClientsCsv() {
 }
 
 const CLIENT_IMPORT_HEADERS = ['Name', 'Company', 'Email', 'Status', 'Health Status'];
-const CLIENT_IMPORT_STATUS_VALUES = ['Lead', 'Active', 'Inactive'];
+const CLIENT_IMPORT_STATUS_VALUES = ['Lead', 'Onboarding', 'Active', 'Completed', 'Churned'];
 const CLIENT_IMPORT_HEALTH_VALUES = ['Healthy', 'Watch', 'At Risk'];
 const CLIENT_IMPORT_MAX_ROWS = 500;
 
@@ -2130,12 +2147,29 @@ function openTaskModal(pageId) {
     document.getElementById('tName').value = titleText(titleProp) || '';
     document.getElementById('tDueDate').value = dateStr(findProp(props, DUE_DATE_NAMES));
     ensureSelectHasValue(document.getElementById('tStatus'), anyStatusName(findProp(props, STATUS_NAMES)));
+    const blockedByIds = relationIds(findProp(props, TASK_BLOCKED_BY_NAMES));
+    populateBlockedBySelect(document.getElementById('tBlockedBy'), pageId, blockedByIds);
+    const conflict = computeTaskConflict(pageId);
+    const conflictEl = document.getElementById('tConflictInfo');
+    if (conflict.dateConflict) {
+      conflictEl.textContent = '⚠ Date conflict — one of the tasks blocking this one is due after this task\'s own due date.';
+      conflictEl.style.color = 'var(--red)';
+      conflictEl.style.display = 'block';
+    } else if (conflict.blocked) {
+      conflictEl.textContent = '🔒 Blocked by: ' + conflict.incompleteBlockers.join(', ');
+      conflictEl.style.color = 'var(--amber)';
+      conflictEl.style.display = 'block';
+    } else {
+      conflictEl.style.display = 'none';
+    }
     infoEl.textContent = '';
   } else {
     document.getElementById('taskModalTitle').textContent = 'Add task';
     document.getElementById('tName').value = '';
     document.getElementById('tDueDate').value = '';
     document.getElementById('tStatus').value = 'Not started';
+    populateBlockedBySelect(document.getElementById('tBlockedBy'), null, []);
+    document.getElementById('tConflictInfo').style.display = 'none';
     const candidate = pickAutoAssignee();
     infoEl.textContent = candidate
       ? `⚡ Will auto-assign to ${candidate.name} (lowest current workload).`
@@ -2154,6 +2188,8 @@ function buildTaskProperties({ isNew, autoAssignCandidate }) {
   const name = document.getElementById('tName').value.trim();
   const dueDate = document.getElementById('tDueDate').value;
   const status = document.getElementById('tStatus').value;
+  const blockedBySelect = document.getElementById('tBlockedBy');
+  const blockedByIds = blockedBySelect ? Array.from(blockedBySelect.selectedOptions).map(o => o.value) : [];
   const titleKey = taskTitleProp || 'Name';
 
   if (isNew || name) {
@@ -2169,6 +2205,11 @@ function buildTaskProperties({ isNew, autoAssignCandidate }) {
   }
   if (isNew && autoAssignCandidate) {
     props['Assigned To'] = { relation: [{ id: autoAssignCandidate.id }] };
+  }
+  // Only written when non-empty — buyers who haven't added the optional
+  // "Blocked By" field yet must never have a save fail because of it.
+  if (blockedByIds.length) {
+    props['Blocked By'] = { relation: blockedByIds.map(id => ({ id })) };
   }
   return props;
 }
@@ -2717,6 +2758,59 @@ async function saveTimeEntry() {
     saveBtn.textContent = 'Save';
     saveBtn.disabled = false;
   }
+}
+
+// --- Task Dependencies ---
+// "Blocked" = at least one linked Blocked-By task isn't Done yet.
+// "Date conflict" = a blocker's own Due Date is scheduled AFTER this task's
+// Due Date — an impossible order (this task can't finish before the work
+// it depends on does), surfaced so the buyer can fix one of the two dates.
+function computeTaskConflict(taskId) {
+  const page = lastTaskPages[taskId];
+  if (!page) return { blocked: false, dateConflict: false, incompleteBlockers: [] };
+  const props = page.properties || {};
+  const blockedByIds = relationIds(findProp(props, TASK_BLOCKED_BY_NAMES));
+  const myDue = dateVal(findProp(props, DUE_DATE_NAMES));
+  let blocked = false;
+  let dateConflict = false;
+  const incompleteBlockers = [];
+  blockedByIds.forEach(id => {
+    const blocker = lastTaskPages[id];
+    if (!blocker) return;
+    const bProps = blocker.properties || {};
+    const bStatus = anyStatusName(findProp(bProps, STATUS_NAMES));
+    if (!isDoneLike(bStatus)) {
+      blocked = true;
+      const tp = taskTitleProp && bProps[taskTitleProp] ? bProps[taskTitleProp] : findProp(bProps, NAME_NAMES);
+      incompleteBlockers.push(titleText(tp) || 'Unnamed task');
+    }
+    const bDue = dateVal(findProp(bProps, DUE_DATE_NAMES));
+    if (myDue && bDue && bDue > myDue) dateConflict = true;
+  });
+  return { blocked, dateConflict, incompleteBlockers };
+}
+
+function taskDependencyBadge(taskId) {
+  const c = computeTaskConflict(taskId);
+  if (c.dateConflict) return badgePill('⚠ Date conflict', 'red');
+  if (c.blocked) return badgePill('🔒 Blocked', 'yellow');
+  return '';
+}
+
+function populateBlockedBySelect(selectEl, excludeTaskId, selectedIds) {
+  if (!selectEl) return;
+  selectEl.innerHTML = '';
+  Object.keys(lastTaskPages).forEach(id => {
+    if (id === excludeTaskId) return;
+    const props = lastTaskPages[id].properties || {};
+    const tp = taskTitleProp && props[taskTitleProp] ? props[taskTitleProp] : findProp(props, NAME_NAMES);
+    const name = titleText(tp) || 'Unnamed task';
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = name;
+    if ((selectedIds || []).includes(id)) opt.selected = true;
+    selectEl.appendChild(opt);
+  });
 }
 
 // --- Project Handoff / Close-out ---
@@ -3401,7 +3495,7 @@ function renderDashboard(data) {
         { propLabel: 'Date', candidates: FINANCE_DATE_NAMES },
       ] },
     { label: 'Clients', pages: clients, checks: [
-        { propLabel: 'Status', candidates: STATUS_NAMES, expectedValues: ['Lead', 'Active', 'Inactive'] },
+        { propLabel: 'Status', candidates: STATUS_NAMES, expectedValues: ['Lead', 'Onboarding', 'Active', 'Completed', 'Churned'] },
         { propLabel: 'Health Status', candidates: HEALTH_STATUS_NAMES, expectedValues: ['Healthy', 'Watch', 'At Risk'] },
       ] },
     { label: 'Projects', pages: projects, checks: [
@@ -3613,6 +3707,7 @@ function renderDashboard(data) {
         <span class="line-left"><span>${esc(name)}</span></span>
         <span style="display:flex;align-items:center;gap:8px;">
           ${badgePill(status, taskStatusDot(status))}
+          ${taskDependencyBadge(t.id)}
           <button class="edit-btn" onclick="openTaskModal('${t.id}')" title="Edit task"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
           <button class="del-btn" onclick="deleteRecord('${t.id}')" title="Delete task"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
         </span>
