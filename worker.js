@@ -270,7 +270,8 @@ var DB_NAME_ALIASES = {
   projects: ["projects", "project"],
   tasks: ["tasks", "task"],
   finance: ["finance", "financial"],
-  content: ["content calendar", "content", "calendar"]
+  content: ["content calendar", "content", "calendar"],
+  timeEntries: ["time entries", "time entry", "time tracking", "timesheet"]
 };
 var REQUIRED_DB_KEYS = ["clients", "finance"];
 function normalizeNotionId(idOrUrl) {
