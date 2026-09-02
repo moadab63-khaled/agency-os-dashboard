@@ -3876,7 +3876,7 @@ function renderDashboard(data) {
     const status = selectName(findProp(c.properties, HEALTH_STATUS_NAMES)) || '—';
     return `<div class="line">
       <span class="line-left">${avatarHtml(name)}<span>${esc(name)}</span></span>
-      <span style="display:flex;align-items:center;gap:8px;">
+      <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:6px;justify-content:flex-end;">
         ${badgePill(status, healthDot(status))}
         <button class="edit-btn" onclick="openClientModal('${c.id}')" title="Edit client"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
         <button class="del-btn" onclick="deleteRecord('${c.id}')" title="Delete client"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
@@ -3893,7 +3893,7 @@ function renderDashboard(data) {
     const pct = Math.round((wl / maxWorkload) * 100);
     return `<div class="line">
       <span class="line-left">${avatarHtml(name)}<span>${esc(name)}${role ? '<span style="color:#5C647C;"> — ' + esc(role) + '</span>' : ''}</span></span>
-      <span style="display:flex;align-items:center;gap:8px;">
+      <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:6px;justify-content:flex-end;">
         <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>
         <button class="edit-btn" onclick="openTeamModal('${t.id}')" title="Edit team member"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
         <button class="del-btn" onclick="deleteRecord('${t.id}')" title="Delete team member"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
@@ -3985,7 +3985,7 @@ function renderDashboard(data) {
       const editTitle = item.kind === 'project' ? 'Edit project' : 'Edit task';
       return `<div class="line">
         <span class="line-left"><span class="dot red"></span><span>${icon} ${esc(item.name)}</span></span>
-        <span style="display:flex;align-items:center;gap:8px;">
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:6px;justify-content:flex-end;">
           <span style="color:#F87171;font-size:12px;">${item.days} day${item.days === 1 ? '' : 's'} overdue</span>
           <button class="edit-btn" onclick="${openFn}('${item.id}')" title="${editTitle}"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
         </span>
@@ -4009,7 +4009,7 @@ function renderDashboard(data) {
       const status = selectName(findProp(p.properties, STATUS_NAMES)) || '—';
       return `<div class="line">
         <span class="line-left"><span>${esc(name)}</span></span>
-        <span style="display:flex;align-items:center;gap:8px;">
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:6px;justify-content:flex-end;">
           ${badgePill(status, statusDot(status))}
           ${profitabilityBarHtml(p.id)}
           ${scopeCreepBadgeHtml(p.id)}
@@ -4043,7 +4043,7 @@ function renderDashboard(data) {
       const status = anyStatusName(findProp(t.properties, STATUS_NAMES)) || '—';
       return `<div class="line">
         <span class="line-left"><span>${esc(name)}</span></span>
-        <span style="display:flex;align-items:center;gap:8px;">
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:6px;justify-content:flex-end;">
           ${badgePill(status, taskStatusDot(status))}
           ${taskDependencyBadge(t.id)}
           <button class="edit-btn" onclick="openTaskModal('${t.id}')" title="Edit task"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
@@ -4076,7 +4076,7 @@ function renderDashboard(data) {
       const projName = projPage ? (titleText(findProp(projPage.properties, NAME_NAMES)) || 'Unnamed project') : '—';
       return `<div class="line">
         <span class="line-left"><span>${esc(name)} <span style="color:#5C647C;">— ${esc(projName)}</span></span></span>
-        <span style="display:flex;align-items:center;gap:8px;">
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:6px;justify-content:flex-end;">
           <span style="color:#C7CEDE;font-size:12.5px;font-weight:700;font-family:'Cairo',sans-serif;">${hours}h</span>
           <button class="edit-btn" onclick="openTimeEntryModal('${te.id}')" title="Edit time entry"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
           <button class="del-btn" onclick="deleteRecord('${te.id}')" title="Delete time entry"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
@@ -4112,7 +4112,7 @@ function renderDashboard(data) {
       const tone = status === 'Approved' ? 'green' : status === 'Invoiced' ? 'neutral' : 'yellow';
       return `<div class="line">
         <span class="line-left"><span>${esc(name)} <span style="color:#5C647C;">— ${esc(projName)}</span></span></span>
-        <span style="display:flex;align-items:center;gap:8px;">
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:6px;justify-content:flex-end;">
           ${suggestedAmount !== null ? `<span style="color:#C7CEDE;font-size:12.5px;font-weight:700;font-family:'Cairo',sans-serif;">$${suggestedAmount.toLocaleString(undefined,{maximumFractionDigits:0})}</span>` : `<span style="color:#5C647C;font-size:11.5px;">${hoursEstimate}h</span>`}
           ${badgePill(status, tone)}
           <button class="edit-btn" onclick="openScopeChangeModal('${sc.id}')" title="Edit scope change"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
@@ -4142,7 +4142,7 @@ function renderDashboard(data) {
     const amt = numberVal(findProp(f.properties, AMOUNT_NAMES));
     return `<div class="line">
       <span class="line-left"><span>${esc(name)}</span></span>
-      <span style="display:flex;align-items:center;gap:8px;">
+      <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:6px;justify-content:flex-end;">
         <span style="color:#C7CEDE;font-size:12.5px;font-weight:700;font-family:'Cairo',sans-serif;">$${amt.toLocaleString()}</span>
         ${badgePill(status, financeStatusDot(status))}
         <button class="edit-btn" onclick="openFinanceModal('${f.id}')" title="Edit entry"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
@@ -4176,7 +4176,7 @@ function renderDashboard(data) {
       const status = selectName(findProp(c.properties, STATUS_NAMES)) || '—';
       return `<div class="line">
         <span class="line-left"><span>${esc(name)}</span></span>
-        <span style="display:flex;align-items:center;gap:8px;">
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:6px;justify-content:flex-end;">
           ${badgePill(status, contentStatusDot(status))}
           <button class="edit-btn" id="repurpose-${c.id}" onclick="repurposeContent('${c.id}')" title="Repurpose with AI"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6L12 2z"></path></svg></button>
           <button class="edit-btn" onclick="openContentModal('${c.id}')" title="Edit content"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
