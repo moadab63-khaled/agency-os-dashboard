@@ -6,6 +6,8 @@ var __defProp2 = Object.defineProperty;
 var __name2 = /* @__PURE__ */ __name((target, value) => __defProp2(target, "name", { value, configurable: true }), "__name");
 var __defProp22 = Object.defineProperty;
 var __name22 = /* @__PURE__ */ __name2((target, value) => __defProp22(target, "name", { value, configurable: true }), "__name");
+var __defProp222 = Object.defineProperty;
+var __name222 = /* @__PURE__ */ __name22((target, value) => __defProp222(target, "name", { value, configurable: true }), "__name");
 var NOTION_VERSION = "2022-06-28";
 var NOTION_VERSION_DATA_SOURCES = "2025-09-03";
 var CORS = {
@@ -22,12 +24,14 @@ function json(data, status = 200) {
 __name(json, "json");
 __name2(json, "json");
 __name22(json, "json");
+__name222(json, "json");
 function isMultiDataSourceError(errText) {
   return typeof errText === "string" && errText.includes("multiple_data_sources_for_database");
 }
 __name(isMultiDataSourceError, "isMultiDataSourceError");
 __name2(isMultiDataSourceError, "isMultiDataSourceError");
 __name22(isMultiDataSourceError, "isMultiDataSourceError");
+__name222(isMultiDataSourceError, "isMultiDataSourceError");
 async function fetchWithRetry(url, options, maxRetries = 1) {
   let attempt = 0;
   while (true) {
@@ -42,6 +46,7 @@ async function fetchWithRetry(url, options, maxRetries = 1) {
 __name(fetchWithRetry, "fetchWithRetry");
 __name2(fetchWithRetry, "fetchWithRetry");
 __name22(fetchWithRetry, "fetchWithRetry");
+__name222(fetchWithRetry, "fetchWithRetry");
 function coerceAiText(raw) {
   if (typeof raw === "string") return raw;
   if (raw == null) return "";
@@ -57,6 +62,7 @@ function coerceAiText(raw) {
 __name(coerceAiText, "coerceAiText");
 __name2(coerceAiText, "coerceAiText");
 __name22(coerceAiText, "coerceAiText");
+__name222(coerceAiText, "coerceAiText");
 async function checkLicense(env, licenseKey) {
   if (!licenseKey || typeof licenseKey !== "string") {
     return { valid: false, reason: "missing" };
@@ -82,6 +88,7 @@ async function checkLicense(env, licenseKey) {
 __name(checkLicense, "checkLicense");
 __name2(checkLicense, "checkLicense");
 __name22(checkLicense, "checkLicense");
+__name222(checkLicense, "checkLicense");
 async function handleAdminLicense(request, env) {
   let payload;
   try {
@@ -128,6 +135,7 @@ async function handleAdminLicense(request, env) {
 __name(handleAdminLicense, "handleAdminLicense");
 __name2(handleAdminLicense, "handleAdminLicense");
 __name22(handleAdminLicense, "handleAdminLicense");
+__name222(handleAdminLicense, "handleAdminLicense");
 var OAUTH_STATE_TTL_SECONDS = 600;
 var RECONNECT_COOLDOWN_MS = 48 * 60 * 60 * 1e3;
 function dashboardBaseUrl(request) {
@@ -137,6 +145,7 @@ function dashboardBaseUrl(request) {
 __name(dashboardBaseUrl, "dashboardBaseUrl");
 __name2(dashboardBaseUrl, "dashboardBaseUrl");
 __name22(dashboardBaseUrl, "dashboardBaseUrl");
+__name222(dashboardBaseUrl, "dashboardBaseUrl");
 function redirectToDashboard(request, params) {
   const base = dashboardBaseUrl(request);
   const qs = new URLSearchParams(params).toString();
@@ -145,6 +154,7 @@ function redirectToDashboard(request, params) {
 __name(redirectToDashboard, "redirectToDashboard");
 __name2(redirectToDashboard, "redirectToDashboard");
 __name22(redirectToDashboard, "redirectToDashboard");
+__name222(redirectToDashboard, "redirectToDashboard");
 async function handleOAuthStart(request, env) {
   const url = new URL(request.url);
   const licenseKey = (url.searchParams.get("licenseKey") || "").trim();
@@ -174,6 +184,7 @@ async function handleOAuthStart(request, env) {
 __name(handleOAuthStart, "handleOAuthStart");
 __name2(handleOAuthStart, "handleOAuthStart");
 __name22(handleOAuthStart, "handleOAuthStart");
+__name222(handleOAuthStart, "handleOAuthStart");
 async function handleOAuthCallback(request, env) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -253,6 +264,7 @@ async function handleOAuthCallback(request, env) {
 __name(handleOAuthCallback, "handleOAuthCallback");
 __name2(handleOAuthCallback, "handleOAuthCallback");
 __name22(handleOAuthCallback, "handleOAuthCallback");
+__name222(handleOAuthCallback, "handleOAuthCallback");
 async function getDataSourceIds(databaseId, token) {
   const res = await fetchWithRetry(`https://api.notion.com/v1/databases/${databaseId}`, {
     method: "GET",
@@ -275,6 +287,7 @@ async function getDataSourceIds(databaseId, token) {
 __name(getDataSourceIds, "getDataSourceIds");
 __name2(getDataSourceIds, "getDataSourceIds");
 __name22(getDataSourceIds, "getDataSourceIds");
+__name222(getDataSourceIds, "getDataSourceIds");
 var DB_NAME_ALIASES = {
   team: ["team"],
   clients: ["clients", "client"],
@@ -282,7 +295,8 @@ var DB_NAME_ALIASES = {
   tasks: ["tasks", "task"],
   finance: ["finance", "financial"],
   content: ["content calendar", "content", "calendar"],
-  timeEntries: ["time entries", "time entry", "time tracking", "timesheet"]
+  timeEntries: ["time entries", "time entry", "time tracking", "timesheet"],
+  scopeChanges: ["scope changes", "scope change"]
 };
 var REQUIRED_DB_KEYS = ["clients", "finance"];
 function normalizeNotionId(idOrUrl) {
@@ -296,6 +310,7 @@ function normalizeNotionId(idOrUrl) {
 __name(normalizeNotionId, "normalizeNotionId");
 __name2(normalizeNotionId, "normalizeNotionId");
 __name22(normalizeNotionId, "normalizeNotionId");
+__name222(normalizeNotionId, "normalizeNotionId");
 async function fetchChildDatabaseBlocks(blockId, token) {
   const found = [];
   let cursor = void 0;
@@ -333,6 +348,7 @@ async function fetchChildDatabaseBlocks(blockId, token) {
 __name(fetchChildDatabaseBlocks, "fetchChildDatabaseBlocks");
 __name2(fetchChildDatabaseBlocks, "fetchChildDatabaseBlocks");
 __name22(fetchChildDatabaseBlocks, "fetchChildDatabaseBlocks");
+__name222(fetchChildDatabaseBlocks, "fetchChildDatabaseBlocks");
 function matchDatabasesToKeys(childDatabases) {
   const found = {};
   const usedIds = /* @__PURE__ */ new Set();
@@ -355,6 +371,7 @@ function matchDatabasesToKeys(childDatabases) {
 __name(matchDatabasesToKeys, "matchDatabasesToKeys");
 __name2(matchDatabasesToKeys, "matchDatabasesToKeys");
 __name22(matchDatabasesToKeys, "matchDatabasesToKeys");
+__name222(matchDatabasesToKeys, "matchDatabasesToKeys");
 async function handleDiscoverDatabases(payload, token) {
   const { pageUrl } = payload;
   const pageId = normalizeNotionId(pageUrl);
@@ -399,6 +416,7 @@ async function handleDiscoverDatabases(payload, token) {
 __name(handleDiscoverDatabases, "handleDiscoverDatabases");
 __name2(handleDiscoverDatabases, "handleDiscoverDatabases");
 __name22(handleDiscoverDatabases, "handleDiscoverDatabases");
+__name222(handleDiscoverDatabases, "handleDiscoverDatabases");
 async function fetchAllAccessiblePages(token) {
   const found = [];
   let cursor = void 0;
@@ -441,23 +459,11 @@ async function fetchAllAccessiblePages(token) {
 __name(fetchAllAccessiblePages, "fetchAllAccessiblePages");
 __name2(fetchAllAccessiblePages, "fetchAllAccessiblePages");
 __name22(fetchAllAccessiblePages, "fetchAllAccessiblePages");
+__name222(fetchAllAccessiblePages, "fetchAllAccessiblePages");
 function pickMainPage(pages, edition) {
   if (!pages || !pages.length) return { page: null, reason: "none" };
-  // Prefer a top-level page (direct child of the workspace root) -- this is
-  // the one buyers are told to share with their integration. Falling back to
-  // the full list only if none are top-level (unusual, but keeps discovery
-  // from failing outright).
   const topLevel = pages.filter((p) => p.parent && p.parent.type === "workspace");
   const candidates = topLevel.length ? topLevel : pages;
-  // Edition-aware disambiguation AND enforcement: the purchased license
-  // records which edition this buyer is on. If we know the edition, the
-  // connected page must actually be that edition's page -- both to pick
-  // correctly when more than one top-level page is accessible (e.g. a
-  // workspace holding both a Freelancer and an Agency template), and to
-  // REJECT the connection outright if only a mismatched edition's page is
-  // available (e.g. a Freelancer license pointed at an Agency workspace).
-  // A licensed buyer should never be able to pull an edition's data/features
-  // (Team, Agency-only automations, etc.) that they didn't purchase.
   if (edition) {
     const editionMatch = candidates.find(
       (p) => (p.title || "").toLowerCase().includes(`${edition.toLowerCase()} edition`)
@@ -472,15 +478,8 @@ function pickMainPage(pages, edition) {
 __name(pickMainPage, "pickMainPage");
 __name2(pickMainPage, "pickMainPage");
 __name22(pickMainPage, "pickMainPage");
+__name222(pickMainPage, "pickMainPage");
 async function handleDiscoverDatabasesViaSearch(token, edition) {
-  // IMPORTANT: this scopes discovery to the child databases of ONE identified
-  // page, rather than searching for databases by title across every database
-  // the token can access. A pure title-based global search breaks down the
-  // moment more than one accessible database shares a name (e.g. duplicate
-  // template copies in a testing workspace, or a buyer who duplicated the
-  // template twice) -- Notion's Search API result order isn't guaranteed
-  // stable, so the wrong same-named database could silently get matched on
-  // any reconnect, with no error (just an empty-looking dashboard).
   let accessiblePages;
   try {
     accessiblePages = await fetchAllAccessiblePages(token);
@@ -548,6 +547,7 @@ async function handleDiscoverDatabasesViaSearch(token, edition) {
 __name(handleDiscoverDatabasesViaSearch, "handleDiscoverDatabasesViaSearch");
 __name2(handleDiscoverDatabasesViaSearch, "handleDiscoverDatabasesViaSearch");
 __name22(handleDiscoverDatabasesViaSearch, "handleDiscoverDatabasesViaSearch");
+__name222(handleDiscoverDatabasesViaSearch, "handleDiscoverDatabasesViaSearch");
 async function handleNotionData(request, env) {
   let payload;
   try {
@@ -867,6 +867,7 @@ ${(completedTasks || []).map((t) => `- ${t}`).join("\n") || "(none listed)"}`
   __name(queryDataSource, "queryDataSource");
   __name2(queryDataSource, "queryDataSource");
   __name22(queryDataSource, "queryDataSource");
+  __name222(queryDataSource, "queryDataSource");
   async function queryDatabase(databaseId) {
     if (!databaseId) return { results: [] };
     let results2 = [];
@@ -903,6 +904,7 @@ ${(completedTasks || []).map((t) => `- ${t}`).join("\n") || "(none listed)"}`
   __name(queryDatabase, "queryDatabase");
   __name2(queryDatabase, "queryDatabase");
   __name22(queryDatabase, "queryDatabase");
+  __name222(queryDatabase, "queryDatabase");
   const entries = Object.entries(databases).filter(([, id]) => !!id);
   const results = {};
   for (const [key, id] of entries) {
@@ -917,6 +919,7 @@ ${(completedTasks || []).map((t) => `- ${t}`).join("\n") || "(none listed)"}`
 __name(handleNotionData, "handleNotionData");
 __name2(handleNotionData, "handleNotionData");
 __name22(handleNotionData, "handleNotionData");
+__name222(handleNotionData, "handleNotionData");
 var worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -948,3 +951,4 @@ var worker_default = {
 export {
   worker_default as default
 };
+//# sourceMappingURL=worker.js.map
