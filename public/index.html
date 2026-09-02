@@ -626,6 +626,9 @@
     <label>Due Date</label>
     <input id="tDueDate" type="date">
 
+    <label>Estimated Hours (for Capacity Planning)</label>
+    <input id="tEstimatedHours" type="number" step="0.5" placeholder="e.g. 3">
+
     <label>Status</label>
     <select id="tStatus">
       <option value="">— unchanged —</option>
@@ -725,6 +728,9 @@
 
     <label>Hourly Rate (for Profitability tracking)</label>
     <input id="teamHourlyRate" type="number" step="0.01" placeholder="e.g. 25.00">
+
+    <label>Weekly Capacity Hours (for Capacity Planning)</label>
+    <input id="teamWeeklyCapacity" type="number" step="1" placeholder="e.g. 40">
 
     <label>Skill Tags</label>
     <input id="teamSkillTags" type="text" placeholder="e.g. Photoshop, Figma, SEO (comma-separated)">
@@ -912,8 +918,17 @@ function demoGuard() {
   return false;
 }
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 const CHANGELOG = [
+  {
+    version: '1.5.0',
+    date: 'September 2026',
+    notes: [
+      'New: Capacity Planning — a Load % (green/yellow/red) for every team member, based on Estimated Hours on their open tasks vs their Weekly Capacity Hours',
+      'New: 7-day overload forecast — a proactive "⚠ Overload in Xd" warning when a member\'s upcoming due-soon tasks will push them past their weekly capacity, before it actually happens',
+      'Agency Edition only (Freelancer has no Team database) — optional like Profitability, Handoff and Scope Creep: skip the new fields and everything else works exactly as before'
+    ]
+  },
   {
     version: '1.4.0',
     date: 'September 2026',
@@ -1012,6 +1027,15 @@ function closeChangelog() {
   document.getElementById('changelogOverlay').classList.add('hidden');
 }
 
+// Demo dates for Capacity Planning need to stay "near future" no matter when
+// Demo Mode is actually viewed, so they're computed relative to today instead
+// of hardcoded like the rest of DEMO_DATA.
+function demoOffsetDate(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 const DEMO_DATA = {
   clients: { results: [
     { id: 'demo-client-1', properties: {
@@ -1060,9 +1084,9 @@ const DEMO_DATA = {
     }}
   ]},
   team: { results: [
-    { id: 'demo-team-1', properties: { 'Name': { title: [{ plain_text: 'Sara Elhassan' }] }, 'Role': { select: { name: 'Account Manager' } }, 'Current Workload': { number: 3 }, 'Hourly Rate': { number: 20 } }},
-    { id: 'demo-team-2', properties: { 'Name': { title: [{ plain_text: 'Jon Marks' }] }, 'Role': { select: { name: 'Designer' } }, 'Current Workload': { number: 1 }, 'Hourly Rate': { number: 35 } }},
-    { id: 'demo-team-3', properties: { 'Name': { title: [{ plain_text: 'Priya Nair' }] }, 'Role': { select: { name: 'Developer' } }, 'Current Workload': { number: 5 }, 'Hourly Rate': { number: 45 } }}
+    { id: 'demo-team-1', properties: { 'Name': { title: [{ plain_text: 'Sara Elhassan' }] }, 'Role': { select: { name: 'Account Manager' } }, 'Current Workload': { number: 3 }, 'Hourly Rate': { number: 20 }, 'Weekly Capacity Hours': { number: 40 } }},
+    { id: 'demo-team-2', properties: { 'Name': { title: [{ plain_text: 'Jon Marks' }] }, 'Role': { select: { name: 'Designer' } }, 'Current Workload': { number: 1 }, 'Hourly Rate': { number: 35 }, 'Weekly Capacity Hours': { number: 30 } }},
+    { id: 'demo-team-3', properties: { 'Name': { title: [{ plain_text: 'Priya Nair' }] }, 'Role': { select: { name: 'Developer' } }, 'Current Workload': { number: 5 }, 'Hourly Rate': { number: 45 }, 'Weekly Capacity Hours': { number: 40 } }}
   ]},
   projects: { results: [
     { id: 'demo-proj-1', properties: {
@@ -1079,9 +1103,12 @@ const DEMO_DATA = {
     }}
   ]},
   tasks: { results: [
-    { id: 'demo-task-1', properties: { 'Name': { title: [{ plain_text: 'Send Brightline moodboard v2' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: '2026-08-24' } } }},
-    { id: 'demo-task-2', properties: { 'Name': { title: [{ plain_text: 'Fix Northwind checkout bug' }] }, 'Status': { status: { name: 'In progress' } }, 'Due Date': { date: { start: '2026-08-22' } }, 'Blocked By': { relation: [{ id: 'demo-task-3' }] } }},
-    { id: 'demo-task-3', properties: { 'Name': { title: [{ plain_text: 'Prep Q3 sprint retro' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: '2026-09-01' } }, 'Blocked By': { relation: [{ id: 'demo-task-1' }] } }}
+    { id: 'demo-task-1', properties: { 'Name': { title: [{ plain_text: 'Send Brightline moodboard v2' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: '2026-08-24' } }, 'Assigned To': { relation: [{ id: 'demo-team-1' }] }, 'Estimated Hours': { number: 4 } }},
+    { id: 'demo-task-2', properties: { 'Name': { title: [{ plain_text: 'Fix Northwind checkout bug' }] }, 'Status': { status: { name: 'In progress' } }, 'Due Date': { date: { start: '2026-08-22' } }, 'Blocked By': { relation: [{ id: 'demo-task-3' }] }, 'Assigned To': { relation: [{ id: 'demo-team-3' }] }, 'Estimated Hours': { number: 12 } }},
+    { id: 'demo-task-3', properties: { 'Name': { title: [{ plain_text: 'Prep Q3 sprint retro' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: '2026-09-01' } }, 'Blocked By': { relation: [{ id: 'demo-task-1' }] }, 'Assigned To': { relation: [{ id: 'demo-team-2' }] }, 'Estimated Hours': { number: 6 } }},
+    { id: 'demo-task-4', properties: { 'Name': { title: [{ plain_text: 'Backend rework — payments module' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: demoOffsetDate(4) } }, 'Assigned To': { relation: [{ id: 'demo-team-3' }] }, 'Estimated Hours': { number: 20 } }},
+    { id: 'demo-task-5', properties: { 'Name': { title: [{ plain_text: 'QA pass — Q3 sprint release' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: demoOffsetDate(6) } }, 'Assigned To': { relation: [{ id: 'demo-team-3' }] }, 'Estimated Hours': { number: 25 } }},
+    { id: 'demo-task-6', properties: { 'Name': { title: [{ plain_text: 'Design system component pass' }] }, 'Status': { status: { name: 'Not started' } }, 'Due Date': { date: { start: demoOffsetDate(5) } }, 'Assigned To': { relation: [{ id: 'demo-team-2' }] }, 'Estimated Hours': { number: 20 } }}
   ]},
   content: { results: [
     { id: 'demo-content-1', properties: {
@@ -1536,6 +1563,9 @@ const SCOPE_PROJECT_RELATION_NAMES = ['Project', 'Related Project'];
 const SCOPE_HOURS_ESTIMATE_NAMES = ['Hours Estimate', 'Estimated Hours', 'Hours'];
 const SCOPE_STATUS_NAMES = ['Status'];
 const SCOPE_DATE_ADDED_NAMES = ['Date Added', 'Date'];
+const TASK_ESTIMATED_HOURS_NAMES = ['Estimated Hours', 'Est. Hours', 'Effort Hours'];
+const TASK_ASSIGNED_TO_NAMES = ['Assigned To', 'Assignee', 'Owner'];
+const TEAM_WEEKLY_CAPACITY_NAMES = ['Weekly Capacity Hours', 'Weekly Capacity', 'Capacity Hours'];
 const DONE_VALUES = ['done', 'completed', 'closed', 'published', 'posted', 'live', 'archived', 'cancelled', 'churned', 'delivered'];
 
 function isDoneLike(status) {
@@ -2293,6 +2323,7 @@ function openTaskModal(pageId) {
     const titleProp = taskTitleProp && props[taskTitleProp] ? props[taskTitleProp] : findProp(props, NAME_NAMES);
     document.getElementById('tName').value = titleText(titleProp) || '';
     document.getElementById('tDueDate').value = dateStr(findProp(props, DUE_DATE_NAMES));
+    document.getElementById('tEstimatedHours').value = numberVal(findProp(props, TASK_ESTIMATED_HOURS_NAMES)) || '';
     ensureSelectHasValue(document.getElementById('tStatus'), anyStatusName(findProp(props, STATUS_NAMES)));
     const blockedByIds = relationIds(findProp(props, TASK_BLOCKED_BY_NAMES));
     populateBlockedBySelect(document.getElementById('tBlockedBy'), pageId, blockedByIds);
@@ -2314,6 +2345,7 @@ function openTaskModal(pageId) {
     document.getElementById('taskModalTitle').textContent = 'Add task';
     document.getElementById('tName').value = '';
     document.getElementById('tDueDate').value = '';
+    document.getElementById('tEstimatedHours').value = '';
     document.getElementById('tStatus').value = 'Not started';
     populateBlockedBySelect(document.getElementById('tBlockedBy'), null, []);
     document.getElementById('tConflictInfo').style.display = 'none';
@@ -2334,6 +2366,7 @@ function buildTaskProperties({ isNew, autoAssignCandidate }) {
   const props = {};
   const name = document.getElementById('tName').value.trim();
   const dueDate = document.getElementById('tDueDate').value;
+  const estimatedHours = document.getElementById('tEstimatedHours').value;
   const status = document.getElementById('tStatus').value;
   const blockedBySelect = document.getElementById('tBlockedBy');
   const blockedByIds = blockedBySelect ? Array.from(blockedBySelect.selectedOptions).map(o => o.value) : [];
@@ -2344,6 +2377,9 @@ function buildTaskProperties({ isNew, autoAssignCandidate }) {
   }
   if (dueDate) {
     props['Due Date'] = { date: { start: dueDate } };
+  }
+  if (estimatedHours !== '') {
+    props['Estimated Hours'] = { number: parseFloat(estimatedHours) };
   }
   if (status) {
     props['Status'] = { status: { name: status } };
@@ -2578,6 +2614,7 @@ function openTeamModal(pageId) {
     ensureSelectHasValue(document.getElementById('teamRole'), selectName(props['Role']));
     document.getElementById('teamWorkload').value = numberVal(props['Current Workload']) || '';
     document.getElementById('teamHourlyRate').value = numberVal(findProp(props, HOURLY_RATE_NAMES)) || '';
+    document.getElementById('teamWeeklyCapacity').value = numberVal(findProp(props, TEAM_WEEKLY_CAPACITY_NAMES)) || '';
     const skillTags = (props['Skill Tags'] && props['Skill Tags'].multi_select) || [];
     document.getElementById('teamSkillTags').value = skillTags.map(s => s.name).join(', ');
   } else {
@@ -2586,6 +2623,7 @@ function openTeamModal(pageId) {
     document.getElementById('teamRole').value = '';
     document.getElementById('teamWorkload').value = '';
     document.getElementById('teamHourlyRate').value = '';
+    document.getElementById('teamWeeklyCapacity').value = '40';
     document.getElementById('teamSkillTags').value = '';
   }
 
@@ -2602,6 +2640,7 @@ function buildTeamProperties({ isNew }) {
   const role = document.getElementById('teamRole').value;
   const workload = document.getElementById('teamWorkload').value;
   const hourlyRate = document.getElementById('teamHourlyRate').value;
+  const weeklyCapacity = document.getElementById('teamWeeklyCapacity').value;
   const skillTagsRaw = document.getElementById('teamSkillTags').value.trim();
   const titleKey = teamTitleProp || 'Name';
 
@@ -2616,6 +2655,9 @@ function buildTeamProperties({ isNew }) {
   }
   if (hourlyRate !== '') {
     props['Hourly Rate'] = { number: parseFloat(hourlyRate) };
+  }
+  if (weeklyCapacity !== '') {
+    props['Weekly Capacity Hours'] = { number: parseFloat(weeklyCapacity) };
   }
   if (isNew || skillTagsRaw) {
     const tags = skillTagsRaw ? skillTagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -3927,6 +3969,56 @@ function renderDashboard(data) {
     return !isDoneLike(status);
   }).length;
 
+  // Feature 5: Capacity Planning — Agency Edition only (Freelancer has no Team
+  // database, so `team` is always empty there and this naturally computes to []).
+  const capacityMembers = hasTeam ? team.map(t => {
+    const props = t.properties || {};
+    const titleProp = teamTitleProp && props[teamTitleProp] ? props[teamTitleProp] : findProp(props, NAME_NAMES);
+    const name = titleText(titleProp) || 'Unnamed';
+    // Distinguish "field not set yet" (default to 40h) from an explicit 0 —
+    // a member legitimately on leave/unavailable this week should show 0%
+    // load, not silently fall back to a 40h capacity that hides the truth.
+    const capacityProp = findProp(props, TEAM_WEEKLY_CAPACITY_NAMES);
+    const weeklyCapacity = capacityProp !== undefined ? numberVal(capacityProp) : 40;
+
+    const memberTasks = tasks.filter(task => {
+      const tProps = task.properties || {};
+      const status = anyStatusName(findProp(tProps, STATUS_NAMES));
+      if (isDoneLike(status)) return false;
+      return relationIds(findProp(tProps, TASK_ASSIGNED_TO_NAMES)).includes(t.id);
+    });
+
+    const currentLoad = memberTasks.reduce((sum, task) => sum + numberVal(findProp(task.properties, TASK_ESTIMATED_HOURS_NAMES)), 0);
+    // If capacity is explicitly 0 (member on leave) but they still have tasks
+    // assigned, that's a full-stop overload, not a 0% — avoid both a
+    // division-by-zero artifact and a misleading "0% loaded".
+    const loadPct = weeklyCapacity > 0
+      ? Math.round((currentLoad / weeklyCapacity) * 100)
+      : (currentLoad > 0 ? 100 : 0);
+    const loadTone = loadPct > 100 ? 'red' : loadPct >= 80 ? 'yellow' : 'green';
+
+    // Forecast: tasks due within the next 7 days, sorted by due date. Walk
+    // them in order and find the first point the running total crosses this
+    // member's weekly capacity — a proactive "you'll be overloaded in Xd"
+    // instead of only reacting once it's already happened.
+    const dueSoonTasks = memberTasks
+      .map(task => ({ due: dateVal(findProp(task.properties, DUE_DATE_NAMES)), hrs: numberVal(findProp(task.properties, TASK_ESTIMATED_HOURS_NAMES)) }))
+      .filter(x => x.due && x.due >= now && x.due <= weekFromNow)
+      .sort((a, b) => a.due - b.due);
+
+    let overloadInDays = null;
+    let running = 0;
+    for (const x of dueSoonTasks) {
+      running += x.hrs;
+      if (running > weeklyCapacity) {
+        overloadInDays = Math.max(0, Math.round((x.due - now) / (24 * 60 * 60 * 1000)));
+        break;
+      }
+    }
+
+    return { id: t.id, name, weeklyCapacity, currentLoad, loadPct, loadTone, overloadInDays };
+  }) : [];
+
   function daysOverdue(dueDateString) {
     const parsed = new Date(dueDateString);
     if (isNaN(parsed)) return 0;
@@ -4224,6 +4316,34 @@ function renderDashboard(data) {
     <div class="note" style="margin-top:-8px;">${isDemoMode ? 'This is sample demo data for preview purposes only — nothing here is real or saved.' : 'This is your real data, pulled live from your own Notion workspace just now.'} Extra metrics (Projects/Tasks/Content) assume standard "Status" and "Due Date" property names — if a number looks off, check your database's property names match.</div>
   `;
 
+  let capacityPlanningPanel = '';
+  if (hasTeam) {
+    const capRows = capacityMembers.map(m => {
+      const overloadBadge = m.overloadInDays !== null
+        ? `<span class="badge-pill red" title="Tasks due soon will push this member's near-term load past their weekly capacity"><span class="badge-dot"></span>⚠ Overload in ${m.overloadInDays}d</span>`
+        : '';
+      return `<div class="line">
+        <span class="line-left">${avatarHtml(m.name)}<span>${esc(m.name)}</span></span>
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:6px;">
+          <span class="profit-mini-bar-track" title="${m.currentLoad}h of ${m.weeklyCapacity}h weekly capacity"><span class="profit-mini-bar-fill ${m.loadTone}" style="width:${Math.min(100, m.loadPct)}%;"></span></span>
+          <span style="color:#5C647C;font-size:11.5px;">${m.currentLoad}h / ${m.weeklyCapacity}h (${m.loadPct}%)</span>
+          ${overloadBadge}
+        </span>
+      </div>`;
+    }).join('') || '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"></path></svg><span>No team members found.</span></div>';
+
+    capacityPlanningPanel = `
+      <div class="panel" style="margin-top:14px;">
+        <div class="panel-head">
+          <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>Capacity Planning</h2>
+        </div>
+        <div class="table-header"><span>Member</span><span>Load</span></div>
+        <div id="capacityList">${capRows}</div>
+        <div class="note" style="margin-top:8px;margin-bottom:0;">Set each member's Weekly Capacity Hours (Edit Team Member) and each task's Estimated Hours (Edit Task) for accurate load % and a proactive 7-day overload forecast.</div>
+      </div>
+    `;
+  }
+
   const clientsHtml = `
     <div class="stat-row" style="margin-bottom:14px;">
       <div class="stat-chip"><div class="stat-label">Total Clients</div><div class="stat-value">${clients.length}</div></div>
@@ -4276,6 +4396,7 @@ function renderDashboard(data) {
       <div class="table-header"><span>Client</span><span>Health</span></div>
       <div id="healthList">${healthRows}</div>
     </div>`}
+    ${capacityPlanningPanel}
   `;
 
   const meetingPanel = `
