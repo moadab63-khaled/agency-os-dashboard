@@ -594,6 +594,12 @@
       <option value="Completed">Completed</option>
     </select>
 
+    <label>Estimated Hours (original scope — used to flag scope creep)</label>
+    <input id="pEstimatedHours" type="number" step="0.5" placeholder="e.g. 20">
+
+    <label>Billing Rate (client-facing $/hour — used for suggested scope-change invoices)</label>
+    <input id="pBillingRate" type="number" step="0.01" placeholder="e.g. 80.00">
+
     <div class="actions">
       <button class="btn-cancel" onclick="closeProjectModal()">Cancel</button>
       <button class="btn-save" id="projectSaveBtn" onclick="saveProject()">Save</button>
@@ -814,6 +820,48 @@
   </div>
 </div>
 
+<!-- Scope Change modal -->
+<div class="overlay hidden" id="scopeChangeOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="scopeChangeModalTitle">Add scope change</h3>
+      <button class="modal-close" onclick="closeScopeChangeModal()" aria-label="Close">&times;</button>
+    </div>
+    <p>Logs an out-of-scope request against a project. Once marked Approved or Invoiced, the suggested additional invoice is calculated automatically from the project's Billing Rate.</p>
+
+    <input type="hidden" id="scPageId">
+
+    <label>Name</label>
+    <input id="scName" type="text" placeholder="e.g. Extra homepage revision round">
+
+    <label>Project</label>
+    <select id="scProject" onchange="updateScopeChangeSuggestedPreview()">
+      <option value="">— select a project —</option>
+    </select>
+
+    <label>Hours Estimate</label>
+    <input id="scHoursEstimate" type="number" step="0.25" placeholder="e.g. 5" oninput="updateScopeChangeSuggestedPreview()">
+
+    <label>Date Added</label>
+    <input id="scDateAdded" type="date">
+
+    <label>Status</label>
+    <select id="scStatus" onchange="updateScopeChangeSuggestedPreview()">
+      <option value="Pending">Pending</option>
+      <option value="Approved">Approved</option>
+      <option value="Invoiced">Invoiced</option>
+    </select>
+
+    <div id="scSuggestedAmountBox" style="display:none;margin-top:10px;padding:9px 10px;background:#0F1729;border:1px solid #23304F;border-radius:8px;font-size:12.5px;color:#C7CEDE;"></div>
+
+    <div class="actions">
+      <button class="btn-cancel" onclick="closeScopeChangeModal()">Cancel</button>
+      <button class="btn-save" id="scopeChangeSaveBtn" onclick="saveScopeChange()">Save</button>
+    </div>
+    <div class="error-text" id="scopeChangeError"></div>
+  </div>
+</div>
+
 <!-- Project Handoff / Close-out modal -->
 <div class="overlay hidden" id="handoffOverlay">
   <div class="modal">
@@ -863,8 +911,17 @@ function demoGuard() {
   return false;
 }
 
-const APP_VERSION = '1.3.2';
+const APP_VERSION = '1.4.0';
 const CHANGELOG = [
+  {
+    version: '1.4.0',
+    date: 'September 2026',
+    notes: [
+      'New: Scope Creep Tracker — set an Estimated Hours and Billing Rate on any project, and get an automatic alert when logged time runs over scope',
+      'New: Scope Changes database — log out-of-scope requests per project; once marked Approved or Invoiced, a suggested additional invoice amount is calculated automatically from the project\'s Billing Rate',
+      'Optional, like Profitability and Handoff — if you don\'t add a Scope Changes database or the new Project fields, everything else works exactly as before'
+    ]
+  },
   {
     version: '1.3.2',
     date: 'September 2026',
@@ -1010,12 +1067,14 @@ const DEMO_DATA = {
     { id: 'demo-proj-1', properties: {
       'Name': { title: [{ plain_text: 'Brand Refresh' }] },
       'Status': { select: { name: 'In Progress' } }, 'Due Date': { date: { start: '2026-09-10' } },
-      'Handoff Status': { select: { name: 'Ready for Handoff' } }, 'Client Sign-off': { checkbox: false }
+      'Handoff Status': { select: { name: 'Ready for Handoff' } }, 'Client Sign-off': { checkbox: false },
+      'Estimated Hours': { number: 20 }, 'Billing Rate': { number: 80 }
     }},
     { id: 'demo-proj-2', properties: {
       'Name': { title: [{ plain_text: 'Q3 Website Sprint' }] },
       'Status': { select: { name: 'In Progress' } }, 'Due Date': { date: { start: '2026-08-25' } },
-      'Handoff Status': { select: { name: 'Not Started' } }, 'Client Sign-off': { checkbox: false }
+      'Handoff Status': { select: { name: 'Not Started' } }, 'Client Sign-off': { checkbox: false },
+      'Estimated Hours': { number: 30 }, 'Billing Rate': { number: 60 }
     }}
   ]},
   tasks: { results: [
@@ -1034,6 +1093,18 @@ const DEMO_DATA = {
     { id: 'demo-te-1', properties: { 'Name': { title: [{ plain_text: 'Brand Refresh — moodboards' }] }, 'Hours': { number: 6 }, 'Date': { date: { start: '2026-07-01' } }, 'Project': { relation: [{ id: 'demo-proj-1' }] }, 'Team Member': { relation: [{ id: 'demo-team-2' }] } }},
     { id: 'demo-te-2', properties: { 'Name': { title: [{ plain_text: 'Brand Refresh — final delivery' }] }, 'Hours': { number: 10 }, 'Date': { date: { start: '2026-07-07' } }, 'Project': { relation: [{ id: 'demo-proj-1' }] }, 'Team Member': { relation: [{ id: 'demo-team-2' }] } }},
     { id: 'demo-te-3', properties: { 'Name': { title: [{ plain_text: 'Q3 Sprint — backend work' }] }, 'Hours': { number: 40 }, 'Date': { date: { start: '2026-06-10' } }, 'Project': { relation: [{ id: 'demo-proj-2' }] }, 'Team Member': { relation: [{ id: 'demo-team-3' }] } }}
+  ]},
+  scopeChanges: { results: [
+    { id: 'demo-sc-1', properties: {
+      'Name': { title: [{ plain_text: 'Extra checkout revision round' }] },
+      'Project': { relation: [{ id: 'demo-proj-2' }] }, 'Hours Estimate': { number: 10 },
+      'Date Added': { date: { start: '2026-08-20' } }, 'Status': { select: { name: 'Pending' } }
+    }},
+    { id: 'demo-sc-2', properties: {
+      'Name': { title: [{ plain_text: 'Added social media asset pack' }] },
+      'Project': { relation: [{ id: 'demo-proj-1' }] }, 'Hours Estimate': { number: 5 },
+      'Date Added': { date: { start: '2026-08-15' } }, 'Status': { select: { name: 'Approved' } }
+    }}
   ]}
 };
 
@@ -1458,6 +1529,12 @@ const CLIENT_SIGNOFF_NAMES = ['Client Sign-off', 'Client Signoff', 'Sign-off'];
 const PROJECT_TASKS_RELATION_NAMES = ['Tasks', 'Related Tasks'];
 const TASK_BLOCKED_BY_NAMES = ['Blocked By'];
 const TASK_BLOCKING_NAMES = ['Blocking'];
+const PROJECT_ESTIMATED_HOURS_NAMES = ['Estimated Hours', 'Est. Hours', 'Scoped Hours'];
+const PROJECT_BILLING_RATE_NAMES = ['Billing Rate', 'Client Rate'];
+const SCOPE_PROJECT_RELATION_NAMES = ['Project', 'Related Project'];
+const SCOPE_HOURS_ESTIMATE_NAMES = ['Hours Estimate', 'Estimated Hours', 'Hours'];
+const SCOPE_STATUS_NAMES = ['Status'];
+const SCOPE_DATE_ADDED_NAMES = ['Date Added', 'Date'];
 const DONE_VALUES = ['done', 'completed', 'closed', 'published', 'posted', 'live', 'archived', 'cancelled', 'churned', 'delivered'];
 
 function isDoneLike(status) {
@@ -2034,6 +2111,8 @@ function openProjectModal(pageId) {
     document.getElementById('pStartDate').value = dateStr(props['Start Date']);
     document.getElementById('pDueDate').value = dateStr(props['Due Date']);
     ensureSelectHasValue(document.getElementById('pStatus'), selectName(props['Status']));
+    document.getElementById('pEstimatedHours').value = numberVal(findProp(props, PROJECT_ESTIMATED_HOURS_NAMES)) || '';
+    document.getElementById('pBillingRate').value = numberVal(findProp(props, PROJECT_BILLING_RATE_NAMES)) || '';
   } else {
     document.getElementById('projectModalTitle').textContent = 'Add project';
     document.getElementById('pName').value = '';
@@ -2041,6 +2120,8 @@ function openProjectModal(pageId) {
     document.getElementById('pStartDate').value = '';
     document.getElementById('pDueDate').value = '';
     document.getElementById('pStatus').value = 'Not Started';
+    document.getElementById('pEstimatedHours').value = '';
+    document.getElementById('pBillingRate').value = '';
   }
 
   document.getElementById('projectOverlay').classList.remove('hidden');
@@ -2057,6 +2138,8 @@ function buildProjectProperties({ isNew }) {
   const startDate = document.getElementById('pStartDate').value;
   const dueDate = document.getElementById('pDueDate').value;
   const status = document.getElementById('pStatus').value;
+  const estimatedHours = document.getElementById('pEstimatedHours').value;
+  const billingRate = document.getElementById('pBillingRate').value;
 
   if (isNew || name) {
     props['Name'] = { title: [{ text: { content: name } }] };
@@ -2074,6 +2157,12 @@ function buildProjectProperties({ isNew }) {
     props['Status'] = { select: { name: status } };
   } else if (isNew) {
     props['Status'] = { select: { name: 'Not Started' } };
+  }
+  if (estimatedHours !== '') {
+    props['Estimated Hours'] = { number: parseFloat(estimatedHours) };
+  }
+  if (billingRate !== '') {
+    props['Billing Rate'] = { number: parseFloat(billingRate) };
   }
   return props;
 }
@@ -2990,6 +3079,181 @@ async function saveHandoff() {
   }
 }
 
+// --- Scope Creep Tracker ---
+let lastScopeChangePages = {};
+let scopeChangeTitleProp = null;
+
+function computeScopeCreep(projectId) {
+  const projectPage = lastProjectPages[projectId];
+  if (!projectPage) return { hasEstimate: false };
+  const estimatedHours = numberVal(findProp(projectPage.properties || {}, PROJECT_ESTIMATED_HOURS_NAMES));
+  if (!estimatedHours) return { hasEstimate: false };
+  let hoursLogged = 0;
+  Object.values(lastTimeEntryPages).forEach(te => {
+    const props = te.properties || {};
+    const linkedProjectIds = relationIds(findProp(props, TIME_ENTRY_PROJECT_RELATION_NAMES));
+    if (!linkedProjectIds.includes(projectId)) return;
+    hoursLogged += numberVal(findProp(props, HOURS_NAMES));
+  });
+  const overBy = hoursLogged - estimatedHours;
+  return { hasEstimate: true, estimatedHours, hoursLogged, overBy, isOver: overBy > 0 };
+}
+
+function scopeCreepBadgeHtml(projectId) {
+  const c = computeScopeCreep(projectId);
+  if (!c.hasEstimate || !c.isOver) return '';
+  return badgePill(`⚠ ${c.overBy.toFixed(1)}h over scope`, 'red') +
+    ` <button class="add-btn" style="padding:3px 8px;font-size:11px;" onclick="openScopeChangeModal(null, '${projectId}')" title="Log a scope change for this project">+ Log</button>`;
+}
+
+function openScopeChangeModal(pageId, prefillProjectId) {
+  const cfg = loadConfig();
+  if (!isDemoMode && (!cfg || !cfg.token || !cfg.databases || !cfg.databases.scopeChanges)) {
+    alert('This needs a Scope Changes database on your connected Notion page. Add one there (Name, Project relation, Hours Estimate, Date Added, Status), then reopen Settings and reconnect.');
+    return;
+  }
+
+  document.getElementById('scopeChangeError').style.display = 'none';
+  document.getElementById('scPageId').value = pageId || '';
+
+  if (pageId && lastScopeChangePages[pageId]) {
+    const page = lastScopeChangePages[pageId];
+    const props = page.properties || {};
+    document.getElementById('scopeChangeModalTitle').textContent = 'Edit scope change';
+    const titleProp = scopeChangeTitleProp && props[scopeChangeTitleProp] ? props[scopeChangeTitleProp] : findProp(props, NAME_NAMES);
+    document.getElementById('scName').value = titleText(titleProp) || '';
+    document.getElementById('scHoursEstimate').value = numberVal(findProp(props, SCOPE_HOURS_ESTIMATE_NAMES)) || '';
+    document.getElementById('scDateAdded').value = dateStr(findProp(props, SCOPE_DATE_ADDED_NAMES));
+    const projectIds = relationIds(findProp(props, SCOPE_PROJECT_RELATION_NAMES));
+    populateProjectSelect(document.getElementById('scProject'), projectIds[0], '— select a project —');
+    const status = selectName(findProp(props, SCOPE_STATUS_NAMES));
+    ensureSelectHasValue(document.getElementById('scStatus'), status);
+    if (!document.getElementById('scStatus').value) document.getElementById('scStatus').value = 'Pending';
+  } else {
+    document.getElementById('scopeChangeModalTitle').textContent = 'Add scope change';
+    document.getElementById('scName').value = '';
+    document.getElementById('scHoursEstimate').value = '';
+    document.getElementById('scDateAdded').value = new Date().toISOString().slice(0, 10);
+    populateProjectSelect(document.getElementById('scProject'), prefillProjectId || '', '— select a project —');
+    document.getElementById('scStatus').value = 'Pending';
+  }
+
+  updateScopeChangeSuggestedPreview();
+  document.getElementById('scopeChangeOverlay').classList.remove('hidden');
+}
+
+function closeScopeChangeModal() {
+  document.getElementById('scopeChangeOverlay').classList.add('hidden');
+}
+
+function updateScopeChangeSuggestedPreview() {
+  const box = document.getElementById('scSuggestedAmountBox');
+  if (!box) return;
+  const projectId = document.getElementById('scProject').value;
+  const hoursEstimate = parseFloat(document.getElementById('scHoursEstimate').value);
+  const status = document.getElementById('scStatus').value;
+  const projectPage = projectId ? lastProjectPages[projectId] : null;
+  if (!projectPage || isNaN(hoursEstimate) || hoursEstimate <= 0) {
+    box.style.display = 'none';
+    return;
+  }
+  const billingRate = numberVal(findProp(projectPage.properties || {}, PROJECT_BILLING_RATE_NAMES));
+  box.style.display = 'block';
+  if (!billingRate) {
+    box.textContent = 'This project has no Billing Rate set — add one under Edit Project to enable a suggested invoice amount.';
+    return;
+  }
+  const amount = hoursEstimate * billingRate;
+  const amountStr = '$' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  box.textContent = status === 'Pending'
+    ? `Once approved: ${amountStr} suggested (${hoursEstimate}h × $${billingRate}/h billing rate)`
+    : `Suggested invoice: ${amountStr} (${hoursEstimate}h × $${billingRate}/h billing rate)`;
+}
+
+function buildScopeChangeProperties({ isNew }) {
+  const props = {};
+  const name = document.getElementById('scName').value.trim();
+  const projectId = document.getElementById('scProject').value;
+  const hoursEstimate = document.getElementById('scHoursEstimate').value;
+  const dateAdded = document.getElementById('scDateAdded').value;
+  const status = document.getElementById('scStatus').value;
+  const titleKey = scopeChangeTitleProp || 'Name';
+
+  if (isNew || name) {
+    props[titleKey] = { title: [{ text: { content: name } }] };
+  }
+  if (projectId) {
+    props['Project'] = { relation: [{ id: projectId }] };
+  }
+  if (hoursEstimate !== '') {
+    props['Hours Estimate'] = { number: parseFloat(hoursEstimate) };
+  }
+  if (dateAdded) {
+    props['Date Added'] = { date: { start: dateAdded } };
+  }
+  if (status) {
+    props['Status'] = { select: { name: status } };
+  } else if (isNew) {
+    props['Status'] = { select: { name: 'Pending' } };
+  }
+  return props;
+}
+
+async function saveScopeChange() {
+  if (demoGuard()) return;
+  const cfg = loadConfig();
+  const pageId = document.getElementById('scPageId').value;
+  const isNew = !pageId;
+  const name = document.getElementById('scName').value.trim();
+  const projectId = document.getElementById('scProject').value;
+  const hoursEstimate = document.getElementById('scHoursEstimate').value;
+  const errorEl = document.getElementById('scopeChangeError');
+  errorEl.style.display = 'none';
+
+  if (isNew && !name) {
+    errorEl.textContent = 'Name is required.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (isNew && !projectId) {
+    errorEl.textContent = 'Please select a project.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (isNew && (hoursEstimate === '' || isNaN(parseFloat(hoursEstimate)) || parseFloat(hoursEstimate) <= 0)) {
+    errorEl.textContent = 'Please enter a valid number of hours greater than 0.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const properties = buildScopeChangeProperties({ isNew });
+  const body = isNew
+    ? { token: cfg.token, action: 'create', databaseId: cfg.databases.scopeChanges, properties }
+    : { token: cfg.token, action: 'update', pageId, properties };
+
+  const saveBtn = document.getElementById('scopeChangeSaveBtn');
+  saveBtn.textContent = 'Saving…';
+  saveBtn.disabled = true;
+
+  try {
+    const res = await notionFetch('/api/notion-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
+    closeScopeChangeModal();
+    fetchAndRender();
+  } catch (err) {
+    errorEl.textContent = 'Could not save (' + err.message + ').';
+    errorEl.style.display = 'block';
+  } finally {
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = false;
+  }
+}
+
 // --- Project Profitability Score ---
 // Revenue: sum of Finance entries (Type=Income, Invoice Status=Paid) whose
 // Project relation includes this project. Cost: sum over Time Entries linked
@@ -3524,6 +3788,7 @@ function renderDashboard(data) {
   const tasks = (data.tasks && data.tasks.results) || [];
   const content = (data.content && data.content.results) || [];
   const timeEntries = (data.timeEntries && data.timeEntries.results) || [];
+  const scopeChanges = (data.scopeChanges && data.scopeChanges.results) || [];
 
   lastClientPages = {};
   clients.forEach(c => { lastClientPages[c.id] = c; });
@@ -3544,11 +3809,15 @@ function renderDashboard(data) {
   lastTimeEntryPages = {};
   timeEntries.forEach(te => { lastTimeEntryPages[te.id] = te; });
   timeEntryTitleProp = detectTitleProp(lastTimeEntryPages);
+  lastScopeChangePages = {};
+  scopeChanges.forEach(sc => { lastScopeChangePages[sc.id] = sc; });
+  scopeChangeTitleProp = detectTitleProp(lastScopeChangePages);
   workloadOverrides = {};
 
   const getProp = (page, name) => (page.properties || {})[name];
 
   const hasTimeEntries = !!(data.timeEntries);
+  const hasScopeChanges = !!(data.scopeChanges);
 
   const propertyWarnings = detectMissingProperties([
     { label: 'Finance', pages: finance, checks: [
@@ -3579,6 +3848,11 @@ function renderDashboard(data) {
     { label: 'Time Entries', pages: timeEntries, checks: [
         { propLabel: 'Hours', candidates: HOURS_NAMES },
         { propLabel: 'Project', candidates: TIME_ENTRY_PROJECT_RELATION_NAMES },
+      ] },
+    { label: 'Scope Changes', pages: scopeChanges, checks: [
+        { propLabel: 'Hours Estimate', candidates: SCOPE_HOURS_ESTIMATE_NAMES },
+        { propLabel: 'Project', candidates: SCOPE_PROJECT_RELATION_NAMES },
+        { propLabel: 'Status', candidates: SCOPE_STATUS_NAMES, expectedValues: ['Pending', 'Approved', 'Invoiced'] },
       ] },
   ]);
 
@@ -3738,6 +4012,7 @@ function renderDashboard(data) {
         <span style="display:flex;align-items:center;gap:8px;">
           ${badgePill(status, statusDot(status))}
           ${profitabilityBarHtml(p.id)}
+          ${scopeCreepBadgeHtml(p.id)}
           ${handoffBadge(p)}
           <button class="edit-btn" onclick="openHandoffModal('${p.id}')" title="Close out / handoff"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></button>
           <button class="edit-btn" onclick="openProjectModal('${p.id}')" title="Edit project"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
@@ -3818,6 +4093,44 @@ function renderDashboard(data) {
         <input type="text" class="search-input" placeholder="Search time entries…" oninput="filterPanelRows(this, 'timeEntryList')">
         <div class="table-header"><span>Entry — Project</span><span>Hours</span></div>
         <div id="timeEntryList">${teRows}</div>
+      </div>
+    `;
+  }
+
+  let scopeChangesPanel = '';
+  if (hasProjects) {
+    const scRows = scopeChanges.slice(0, 8).map(sc => {
+      const titleProp = scopeChangeTitleProp && sc.properties[scopeChangeTitleProp] ? sc.properties[scopeChangeTitleProp] : findProp(sc.properties, NAME_NAMES);
+      const name = titleText(titleProp) || 'Unnamed scope change';
+      const status = selectName(findProp(sc.properties, SCOPE_STATUS_NAMES)) || 'Pending';
+      const hoursEstimate = numberVal(findProp(sc.properties, SCOPE_HOURS_ESTIMATE_NAMES));
+      const projIds = relationIds(findProp(sc.properties, SCOPE_PROJECT_RELATION_NAMES));
+      const projPage = projIds[0] ? lastProjectPages[projIds[0]] : null;
+      const projName = projPage ? (titleText(findProp(projPage.properties, NAME_NAMES)) || 'Unnamed project') : '—';
+      const billingRate = projPage ? numberVal(findProp(projPage.properties, PROJECT_BILLING_RATE_NAMES)) : 0;
+      const suggestedAmount = (status !== 'Pending' && billingRate) ? hoursEstimate * billingRate : null;
+      const tone = status === 'Approved' ? 'green' : status === 'Invoiced' ? 'neutral' : 'yellow';
+      return `<div class="line">
+        <span class="line-left"><span>${esc(name)} <span style="color:#5C647C;">— ${esc(projName)}</span></span></span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          ${suggestedAmount !== null ? `<span style="color:#C7CEDE;font-size:12.5px;font-weight:700;font-family:'Cairo',sans-serif;">$${suggestedAmount.toLocaleString(undefined,{maximumFractionDigits:0})}</span>` : `<span style="color:#5C647C;font-size:11.5px;">${hoursEstimate}h</span>`}
+          ${badgePill(status, tone)}
+          <button class="edit-btn" onclick="openScopeChangeModal('${sc.id}')" title="Edit scope change"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>
+          <button class="del-btn" onclick="deleteRecord('${sc.id}')" title="Delete scope change"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
+        </span>
+      </div>`;
+    }).join('') || '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path></svg><span>' + (hasScopeChanges ? 'No scope changes logged yet.' : 'Add a Scope Changes database (Name, Project relation, Hours Estimate, Date Added, Status) to your connected page to start tracking scope creep.') + '</span></div>';
+
+    scopeChangesPanel = `
+      <div class="panel" style="margin-top:14px;">
+        <div class="panel-head">
+          <h2><svg class="hi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path></svg>Scope Changes</h2>
+          <button class="add-btn" onclick="openScopeChangeModal()">+ Add Scope Change</button>
+        </div>
+        <input type="text" class="search-input" placeholder="Search scope changes…" oninput="filterPanelRows(this, 'scopeChangeList')">
+        <div class="table-header"><span>Change — Project</span><span>Status</span></div>
+        <div id="scopeChangeList">${scRows}</div>
+        <div class="note" style="margin-top:8px;margin-bottom:0;">Set a project's Estimated Hours and Billing Rate (Edit Project) to get automatic scope-creep alerts and suggested invoice amounts here.</div>
       </div>
     `;
   }
@@ -3988,6 +4301,7 @@ function renderDashboard(data) {
     ${projectsPanel}
     ${tasksPanel}
     ${timeEntriesPanel}
+    ${scopeChangesPanel}
     ${meetingPanel}
   `;
 
@@ -4052,7 +4366,7 @@ async function fetchAndRender() {
     const data = await res.json().catch(() => ({}));
     if (data.error) throw new Error(data.error);
     if (!res.ok) throw new Error('Request failed: ' + res.status);
-    const dbLabels = { clients: 'Clients', finance: 'Finance', team: 'Team', projects: 'Projects', tasks: 'Tasks', content: 'Content Calendar', timeEntries: 'Time Entries' };
+    const dbLabels = { clients: 'Clients', finance: 'Finance', team: 'Team', projects: 'Projects', tasks: 'Tasks', content: 'Content Calendar', timeEntries: 'Time Entries', scopeChanges: 'Scope Changes' };
     const failedDbs = Object.keys(dbLabels).filter(k => data[k] && data[k].error).map(k => dbLabels[k]);
 
     const REQUIRED_DBS = ['clients', 'finance'];
