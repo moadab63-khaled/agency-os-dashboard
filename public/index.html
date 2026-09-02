@@ -799,10 +799,12 @@
       <option value="">— select a project —</option>
     </select>
 
-    <label>Team Member</label>
-    <select id="teTeamMember">
-      <option value="">— unassigned —</option>
-    </select>
+    <div id="teTeamMemberGroup">
+      <label>Team Member</label>
+      <select id="teTeamMember">
+        <option value="">— unassigned —</option>
+      </select>
+    </div>
 
     <div class="actions">
       <button class="btn-cancel" onclick="closeTimeEntryModal()">Cancel</button>
@@ -2698,6 +2700,12 @@ function openTimeEntryModal(pageId) {
 
   document.getElementById('timeEntryError').style.display = 'none';
   document.getElementById('timeEntryPageId').value = pageId || '';
+
+  // Freelancer Edition has no Team database by design, so the Team Member
+  // field (and its relation) makes no sense there — hide the whole group.
+  const hasTeamDb = isDemoMode || !!(cfg && cfg.databases && cfg.databases.team);
+  const teamGroupEl = document.getElementById('teTeamMemberGroup');
+  if (teamGroupEl) teamGroupEl.style.display = hasTeamDb ? '' : 'none';
 
   if (pageId && lastTimeEntryPages[pageId]) {
     const page = lastTimeEntryPages[pageId];
