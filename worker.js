@@ -442,31 +442,32 @@ __name(fetchAllAccessiblePages, "fetchAllAccessiblePages");
 __name2(fetchAllAccessiblePages, "fetchAllAccessiblePages");
 __name22(fetchAllAccessiblePages, "fetchAllAccessiblePages");
 function pickMainPage(pages, edition) {
-  if (!pages || !pages.length) return null;
+  if (!pages || !pages.length) return { page: null, reason: "none" };
   // Prefer a top-level page (direct child of the workspace root) -- this is
   // the one buyers are told to share with their integration. Falling back to
   // the full list only if none are top-level (unusual, but keeps discovery
   // from failing outright).
   const topLevel = pages.filter((p) => p.parent && p.parent.type === "workspace");
   const candidates = topLevel.length ? topLevel : pages;
-  // Edition-aware disambiguation: if more than one top-level page is
-  // accessible (e.g. a workspace that has both a Freelancer and an Agency
-  // Edition template, or duplicate copies of either -- as can happen in a
-  // seller's own testing workspace, or if a buyer duplicates the template
-  // more than once), a title-only/first-match pick is not reliable since
-  // Notion's Search API result order is not guaranteed stable. The purchased
-  // license already records which edition this buyer is on, so prefer a
-  // candidate whose title actually names that edition before falling back
-  // to "first available."
+  // Edition-aware disambiguation AND enforcement: the purchased license
+  // records which edition this buyer is on. If we know the edition, the
+  // connected page must actually be that edition's page -- both to pick
+  // correctly when more than one top-level page is accessible (e.g. a
+  // workspace holding both a Freelancer and an Agency template), and to
+  // REJECT the connection outright if only a mismatched edition's page is
+  // available (e.g. a Freelancer license pointed at an Agency workspace).
+  // A licensed buyer should never be able to pull an edition's data/features
+  // (Team, Agency-only automations, etc.) that they didn't purchase.
   if (edition) {
     const editionMatch = candidates.find(
       (p) => (p.title || "").toLowerCase().includes(`${edition.toLowerCase()} edition`)
     );
-    if (editionMatch) return { id: editionMatch.id, url: editionMatch.url || null };
+    if (editionMatch) return { page: { id: editionMatch.id, url: editionMatch.url || null }, reason: "ok" };
+    return { page: null, reason: "edition_mismatch" };
   }
   const chosen = candidates[0];
-  if (!chosen) return null;
-  return { id: chosen.id, url: chosen.url || null };
+  if (!chosen) return { page: null, reason: "none" };
+  return { page: { id: chosen.id, url: chosen.url || null }, reason: "ok" };
 }
 __name(pickMainPage, "pickMainPage");
 __name2(pickMainPage, "pickMainPage");
@@ -497,13 +498,20 @@ async function handleDiscoverDatabasesViaSearch(token, edition) {
       all: []
     }, 404);
   }
-  const mainPage = pickMainPage(accessiblePages, edition);
-  if (!mainPage) {
+  const pick = pickMainPage(accessiblePages, edition);
+  if (!pick.page) {
+    if (pick.reason === "edition_mismatch") {
+      return json({
+        error: `This license is for the ${edition} edition, but the page(s) you connected don't match. Please reconnect via Settings and make sure you select your ${edition} edition workspace page (its title should include "${edition[0].toUpperCase() + edition.slice(1)} Edition").`,
+        all: []
+      }, 403);
+    }
     return json({
       error: "Could not identify your main workspace page. Please reconnect via Settings and make sure you select the top-level page containing your databases.",
       all: []
     }, 404);
   }
+  const mainPage = pick.page;
   let childDatabases;
   try {
     childDatabases = await fetchChildDatabaseBlocks(mainPage.id, token);
