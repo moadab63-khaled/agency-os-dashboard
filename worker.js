@@ -4,6 +4,8 @@ var __name = (target, value) => __defProp(target, "name", { value, configurable:
 // worker.js
 var __defProp2 = Object.defineProperty;
 var __name2 = /* @__PURE__ */ __name((target, value) => __defProp2(target, "name", { value, configurable: true }), "__name");
+var __defProp22 = Object.defineProperty;
+var __name22 = /* @__PURE__ */ __name2((target, value) => __defProp22(target, "name", { value, configurable: true }), "__name");
 var NOTION_VERSION = "2022-06-28";
 var NOTION_VERSION_DATA_SOURCES = "2025-09-03";
 var CORS = {
@@ -19,11 +21,13 @@ function json(data, status = 200) {
 }
 __name(json, "json");
 __name2(json, "json");
+__name22(json, "json");
 function isMultiDataSourceError(errText) {
   return typeof errText === "string" && errText.includes("multiple_data_sources_for_database");
 }
 __name(isMultiDataSourceError, "isMultiDataSourceError");
 __name2(isMultiDataSourceError, "isMultiDataSourceError");
+__name22(isMultiDataSourceError, "isMultiDataSourceError");
 async function fetchWithRetry(url, options, maxRetries = 1) {
   let attempt = 0;
   while (true) {
@@ -37,6 +41,7 @@ async function fetchWithRetry(url, options, maxRetries = 1) {
 }
 __name(fetchWithRetry, "fetchWithRetry");
 __name2(fetchWithRetry, "fetchWithRetry");
+__name22(fetchWithRetry, "fetchWithRetry");
 function coerceAiText(raw) {
   if (typeof raw === "string") return raw;
   if (raw == null) return "";
@@ -51,6 +56,7 @@ function coerceAiText(raw) {
 }
 __name(coerceAiText, "coerceAiText");
 __name2(coerceAiText, "coerceAiText");
+__name22(coerceAiText, "coerceAiText");
 async function checkLicense(env, licenseKey) {
   if (!licenseKey || typeof licenseKey !== "string") {
     return { valid: false, reason: "missing" };
@@ -75,6 +81,7 @@ async function checkLicense(env, licenseKey) {
 }
 __name(checkLicense, "checkLicense");
 __name2(checkLicense, "checkLicense");
+__name22(checkLicense, "checkLicense");
 async function handleAdminLicense(request, env) {
   let payload;
   try {
@@ -120,8 +127,7 @@ async function handleAdminLicense(request, env) {
 }
 __name(handleAdminLicense, "handleAdminLicense");
 __name2(handleAdminLicense, "handleAdminLicense");
-
-// ---- OAuth (Notion "Connect to Notion" flow) ----
+__name22(handleAdminLicense, "handleAdminLicense");
 var OAUTH_STATE_TTL_SECONDS = 600;
 var RECONNECT_COOLDOWN_MS = 48 * 60 * 60 * 1e3;
 function dashboardBaseUrl(request) {
@@ -130,6 +136,7 @@ function dashboardBaseUrl(request) {
 }
 __name(dashboardBaseUrl, "dashboardBaseUrl");
 __name2(dashboardBaseUrl, "dashboardBaseUrl");
+__name22(dashboardBaseUrl, "dashboardBaseUrl");
 function redirectToDashboard(request, params) {
   const base = dashboardBaseUrl(request);
   const qs = new URLSearchParams(params).toString();
@@ -137,6 +144,7 @@ function redirectToDashboard(request, params) {
 }
 __name(redirectToDashboard, "redirectToDashboard");
 __name2(redirectToDashboard, "redirectToDashboard");
+__name22(redirectToDashboard, "redirectToDashboard");
 async function handleOAuthStart(request, env) {
   const url = new URL(request.url);
   const licenseKey = (url.searchParams.get("licenseKey") || "").trim();
@@ -165,6 +173,7 @@ async function handleOAuthStart(request, env) {
 }
 __name(handleOAuthStart, "handleOAuthStart");
 __name2(handleOAuthStart, "handleOAuthStart");
+__name22(handleOAuthStart, "handleOAuthStart");
 async function handleOAuthCallback(request, env) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -243,6 +252,7 @@ async function handleOAuthCallback(request, env) {
 }
 __name(handleOAuthCallback, "handleOAuthCallback");
 __name2(handleOAuthCallback, "handleOAuthCallback");
+__name22(handleOAuthCallback, "handleOAuthCallback");
 async function getDataSourceIds(databaseId, token) {
   const res = await fetchWithRetry(`https://api.notion.com/v1/databases/${databaseId}`, {
     method: "GET",
@@ -264,6 +274,7 @@ async function getDataSourceIds(databaseId, token) {
 }
 __name(getDataSourceIds, "getDataSourceIds");
 __name2(getDataSourceIds, "getDataSourceIds");
+__name22(getDataSourceIds, "getDataSourceIds");
 var DB_NAME_ALIASES = {
   team: ["team"],
   clients: ["clients", "client"],
@@ -284,6 +295,7 @@ function normalizeNotionId(idOrUrl) {
 }
 __name(normalizeNotionId, "normalizeNotionId");
 __name2(normalizeNotionId, "normalizeNotionId");
+__name22(normalizeNotionId, "normalizeNotionId");
 async function fetchChildDatabaseBlocks(blockId, token) {
   const found = [];
   let cursor = void 0;
@@ -320,6 +332,7 @@ async function fetchChildDatabaseBlocks(blockId, token) {
 }
 __name(fetchChildDatabaseBlocks, "fetchChildDatabaseBlocks");
 __name2(fetchChildDatabaseBlocks, "fetchChildDatabaseBlocks");
+__name22(fetchChildDatabaseBlocks, "fetchChildDatabaseBlocks");
 function matchDatabasesToKeys(childDatabases) {
   const found = {};
   const usedIds = /* @__PURE__ */ new Set();
@@ -341,6 +354,7 @@ function matchDatabasesToKeys(childDatabases) {
 }
 __name(matchDatabasesToKeys, "matchDatabasesToKeys");
 __name2(matchDatabasesToKeys, "matchDatabasesToKeys");
+__name22(matchDatabasesToKeys, "matchDatabasesToKeys");
 async function handleDiscoverDatabases(payload, token) {
   const { pageUrl } = payload;
   const pageId = normalizeNotionId(pageUrl);
@@ -384,43 +398,7 @@ async function handleDiscoverDatabases(payload, token) {
 }
 __name(handleDiscoverDatabases, "handleDiscoverDatabases");
 __name2(handleDiscoverDatabases, "handleDiscoverDatabases");
-async function fetchAllAccessibleDatabases(token) {
-  const found = [];
-  let cursor = void 0;
-  let page = 0;
-  const MAX_PAGES = 10;
-  do {
-    const res = await fetchWithRetry("https://api.notion.com/v1/search", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        filter: { value: "database", property: "object" },
-        page_size: 100,
-        ...cursor ? { start_cursor: cursor } : {}
-      })
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      const err = new Error(`Notion API error (${res.status}) searching accessible databases: ${errText}`);
-      err.notionStatus = res.status;
-      throw err;
-    }
-    const data = await res.json();
-    for (const item of data.results || []) {
-      const titleParts = (item.title || []).map((t) => t.plain_text || "").join("");
-      found.push({ id: item.id, title: titleParts });
-    }
-    cursor = data.has_more ? data.next_cursor : null;
-    page++;
-  } while (cursor && page < MAX_PAGES);
-  return found;
-}
-__name(fetchAllAccessibleDatabases, "fetchAllAccessibleDatabases");
-__name2(fetchAllAccessibleDatabases, "fetchAllAccessibleDatabases");
+__name22(handleDiscoverDatabases, "handleDiscoverDatabases");
 async function fetchAllAccessiblePages(token) {
   const found = [];
   let cursor = void 0;
@@ -448,7 +426,12 @@ async function fetchAllAccessiblePages(token) {
     }
     const data = await res.json();
     for (const item of data.results || []) {
-      found.push({ id: item.id, url: item.url || null, parent: item.parent || null });
+      let titleText = "";
+      const titleProp = item.properties && Object.values(item.properties).find((p) => p && p.type === "title");
+      if (titleProp && Array.isArray(titleProp.title)) {
+        titleText = titleProp.title.map((t) => t.plain_text || "").join("");
+      }
+      found.push({ id: item.id, url: item.url || null, parent: item.parent || null, title: titleText });
     }
     cursor = data.has_more ? data.next_cursor : null;
     page++;
@@ -457,18 +440,49 @@ async function fetchAllAccessiblePages(token) {
 }
 __name(fetchAllAccessiblePages, "fetchAllAccessiblePages");
 __name2(fetchAllAccessiblePages, "fetchAllAccessiblePages");
-function pickMainPageUrl(pages) {
+__name22(fetchAllAccessiblePages, "fetchAllAccessiblePages");
+function pickMainPage(pages, edition) {
   if (!pages || !pages.length) return null;
-  const topLevel = pages.find((p) => p.parent && p.parent.type === "workspace");
-  const chosen = topLevel || pages[0];
-  return chosen && chosen.url || null;
+  // Prefer a top-level page (direct child of the workspace root) -- this is
+  // the one buyers are told to share with their integration. Falling back to
+  // the full list only if none are top-level (unusual, but keeps discovery
+  // from failing outright).
+  const topLevel = pages.filter((p) => p.parent && p.parent.type === "workspace");
+  const candidates = topLevel.length ? topLevel : pages;
+  // Edition-aware disambiguation: if more than one top-level page is
+  // accessible (e.g. a workspace that has both a Freelancer and an Agency
+  // Edition template, or duplicate copies of either -- as can happen in a
+  // seller's own testing workspace, or if a buyer duplicates the template
+  // more than once), a title-only/first-match pick is not reliable since
+  // Notion's Search API result order is not guaranteed stable. The purchased
+  // license already records which edition this buyer is on, so prefer a
+  // candidate whose title actually names that edition before falling back
+  // to "first available."
+  if (edition) {
+    const editionMatch = candidates.find(
+      (p) => (p.title || "").toLowerCase().includes(`${edition.toLowerCase()} edition`)
+    );
+    if (editionMatch) return { id: editionMatch.id, url: editionMatch.url || null };
+  }
+  const chosen = candidates[0];
+  if (!chosen) return null;
+  return { id: chosen.id, url: chosen.url || null };
 }
-__name(pickMainPageUrl, "pickMainPageUrl");
-__name2(pickMainPageUrl, "pickMainPageUrl");
-async function handleDiscoverDatabasesViaSearch(token) {
-  let accessibleDatabases;
+__name(pickMainPage, "pickMainPage");
+__name2(pickMainPage, "pickMainPage");
+__name22(pickMainPage, "pickMainPage");
+async function handleDiscoverDatabasesViaSearch(token, edition) {
+  // IMPORTANT: this scopes discovery to the child databases of ONE identified
+  // page, rather than searching for databases by title across every database
+  // the token can access. A pure title-based global search breaks down the
+  // moment more than one accessible database shares a name (e.g. duplicate
+  // template copies in a testing workspace, or a buyer who duplicated the
+  // template twice) -- Notion's Search API result order isn't guaranteed
+  // stable, so the wrong same-named database could silently get matched on
+  // any reconnect, with no error (just an empty-looking dashboard).
+  let accessiblePages;
   try {
-    accessibleDatabases = await fetchAllAccessibleDatabases(token);
+    accessiblePages = await fetchAllAccessiblePages(token);
   } catch (err) {
     if (err.notionStatus === 401) {
       return json({
@@ -477,31 +491,55 @@ async function handleDiscoverDatabasesViaSearch(token) {
     }
     return json({ error: err.message }, 502);
   }
-  if (!accessibleDatabases.length) {
+  if (!accessiblePages.length) {
     return json({
-      error: "No databases were found. Make sure you selected the page containing Clients, Finance and your other databases when you clicked Allow on Notion's screen.",
+      error: "No pages were found. Make sure you selected the page containing Clients, Finance and your other databases when you clicked Allow on Notion's screen.",
       all: []
     }, 404);
   }
-  const { found, missing, missingRequired } = matchDatabasesToKeys(accessibleDatabases);
+  const mainPage = pickMainPage(accessiblePages, edition);
+  if (!mainPage) {
+    return json({
+      error: "Could not identify your main workspace page. Please reconnect via Settings and make sure you select the top-level page containing your databases.",
+      all: []
+    }, 404);
+  }
+  let childDatabases;
+  try {
+    childDatabases = await fetchChildDatabaseBlocks(mainPage.id, token);
+  } catch (err) {
+    if (err.notionStatus === 404) {
+      return json({
+        error: "Could not access the page you selected. Please reconnect via Settings."
+      }, 404);
+    }
+    if (err.notionStatus === 401) {
+      return json({
+        error: "Your Notion connection is no longer valid. Please reconnect via Settings."
+      }, 401);
+    }
+    return json({ error: err.message }, 502);
+  }
+  if (!childDatabases.length) {
+    return json({
+      error: "No databases were found on the page you selected. Make sure it's the main workspace page (the one containing Clients, Finance and your other databases).",
+      all: []
+    }, 404);
+  }
+  const { found, missing, missingRequired } = matchDatabasesToKeys(childDatabases);
   if (missingRequired.length) {
     return json({
       error: `Connected to Notion, but could not find: ${missingRequired.join(", ")}. Make sure you selected the right page when connecting, and that none of the database names were changed.`,
       found,
       missing,
-      all: accessibleDatabases
+      all: childDatabases
     }, 404);
   }
-  let mainPageUrl = null;
-  try {
-    const accessiblePages = await fetchAllAccessiblePages(token);
-    mainPageUrl = pickMainPageUrl(accessiblePages);
-  } catch (e) {
-  }
-  return json({ ok: true, databases: found, missing, all: accessibleDatabases, mainPageUrl });
+  return json({ ok: true, databases: found, missing, all: childDatabases, mainPageUrl: mainPage.url });
 }
 __name(handleDiscoverDatabasesViaSearch, "handleDiscoverDatabasesViaSearch");
 __name2(handleDiscoverDatabasesViaSearch, "handleDiscoverDatabasesViaSearch");
+__name22(handleDiscoverDatabasesViaSearch, "handleDiscoverDatabasesViaSearch");
 async function handleNotionData(request, env) {
   let payload;
   try {
@@ -698,7 +736,7 @@ ${(completedTasks || []).map((t) => `- ${t}`).join("\n") || "(none listed)"}`
     return handleDiscoverDatabases(payload, token);
   }
   if (action === "discover-databases-oauth") {
-    return handleDiscoverDatabasesViaSearch(token);
+    return handleDiscoverDatabasesViaSearch(token, licenseCheck.edition);
   }
   const notionHeaders = {
     Authorization: `Bearer ${token}`,
@@ -820,6 +858,7 @@ ${(completedTasks || []).map((t) => `- ${t}`).join("\n") || "(none listed)"}`
   }
   __name(queryDataSource, "queryDataSource");
   __name2(queryDataSource, "queryDataSource");
+  __name22(queryDataSource, "queryDataSource");
   async function queryDatabase(databaseId) {
     if (!databaseId) return { results: [] };
     let results2 = [];
@@ -855,6 +894,7 @@ ${(completedTasks || []).map((t) => `- ${t}`).join("\n") || "(none listed)"}`
   }
   __name(queryDatabase, "queryDatabase");
   __name2(queryDatabase, "queryDatabase");
+  __name22(queryDatabase, "queryDatabase");
   const entries = Object.entries(databases).filter(([, id]) => !!id);
   const results = {};
   for (const [key, id] of entries) {
@@ -868,6 +908,7 @@ ${(completedTasks || []).map((t) => `- ${t}`).join("\n") || "(none listed)"}`
 }
 __name(handleNotionData, "handleNotionData");
 __name2(handleNotionData, "handleNotionData");
+__name22(handleNotionData, "handleNotionData");
 var worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
