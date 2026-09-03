@@ -4,23 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Email Alerts Setup Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --navy:#0B1220;
-    --card:#141B2E;
-    --gold:#D4AF6A;
+    --navy:#0F1729;
+    --card:#16223B;
+    --gold:#C9A227;
     --coral:#FF9F5A;
     --green:#34D399;
     --blue:#5AA9E6;
-    --text:#EAEDF3;
-    --muted:#9AA4B8;
-    --border:#232C42;
+    --text:#EFEAD8;
+    --muted:#9AA3B8;
+    --border:rgba(201,162,39,0.28);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{min-height:100%;}
   body{
     margin:0;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-family:'Tajawal',sans-serif;
     background:var(--navy);
     color:var(--text);
     display:flex;
@@ -40,7 +42,7 @@
     color:var(--muted);
     text-transform:uppercase;
   }
-  .brand b{color:var(--gold);font-weight:700;}
+  .brand b{color:var(--gold);font-weight:700;font-family:'Cairo',sans-serif;}
   .toggle{
     display:flex;
     background:var(--card);
@@ -62,7 +64,7 @@
   }
   .toggle button.active{
     background:var(--gold);
-    color:#1A1406;
+    color:var(--navy);
   }
   .progress{
     display:flex;
@@ -188,10 +190,10 @@
   .btn.primary{
     background:var(--gold);
     border-color:var(--gold);
-    color:#1A1406;
+    color:var(--navy);
   }
   .btn.primary:hover,.btn.primary:active,.btn.primary:focus{
-    color:#1A1406;
+    color:var(--navy);
   }
   .btn.ghost{
     background:transparent;
