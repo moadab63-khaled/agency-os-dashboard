@@ -198,9 +198,9 @@
   }
 
   .add-btn {
-    background: transparent;
-    border: 1px solid var(--border-strong);
-    color: var(--text-dim);
+    background: var(--gold-dim);
+    border: 1px solid rgba(201,162,39,0.3);
+    color: var(--gold);
     font-size: 11.5px;
     font-weight: 600;
     padding: 7px 14px;
@@ -209,9 +209,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: border-color 0.15s ease, color 0.15s ease;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
   }
-  .add-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .add-btn:hover { border-color: var(--gold); background: rgba(201,162,39,0.18); }
   .ic { width: 13px; height: 13px; flex-shrink: 0; }
   .add-btn .ic { margin-right: 5px; }
 
@@ -274,7 +274,8 @@
   .stat-chip .stat-label { font-size: 11px; color: var(--text-faint); font-weight: 600; margin-bottom: 7px; }
   .stat-chip .stat-value { font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
   .stat-chip.alert-red .stat-value { color: var(--red); }
-  .stat-chip.alert-red { border-color: rgba(224,102,97,0.3); }
+  .stat-chip.alert-red { border-color: rgba(224,102,97,0.32); grid-column: span 2; background: rgba(224,102,97,0.045); }
+  .stat-chip.alert-red .stat-value { font-size: 24px; }
   .stat-chip.alert-amber .stat-value { color: var(--amber); }
   .stat-chip.alert-amber { border-color: rgba(214,162,60,0.3); }
 
